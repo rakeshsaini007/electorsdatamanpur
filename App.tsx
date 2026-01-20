@@ -26,6 +26,8 @@ const App: React.FC = () => {
     duplicate: null
   });
 
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load initial data
@@ -113,7 +115,7 @@ const App: React.FC = () => {
       img.onload = () => {
         // Resize image to ensure base64 string doesn't exceed Google Sheet cell limits (~50k chars)
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 400;
+        const MAX_WIDTH = 600; // Increased width slightly for better quality on zoom
         const scaleSize = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scaleSize;
@@ -121,13 +123,22 @@ const App: React.FC = () => {
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
         
-        // Export as low-quality jpeg to save space
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        // Export as medium-quality jpeg to save space while keeping enough detail
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
         handleEditChange('aadhaarImage', dataUrl);
       };
       img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  const downloadImage = (dataUrl: string, name: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `Aadhaar_${name.replace(/\s+/g, '_')}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleSave = async (member: Member) => {
@@ -377,14 +388,36 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   {/* Aadhaar Image Section */}
                   <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
-                    <label className="block text-xs font-black text-blue-700 mb-3 uppercase tracking-wider">आधार कार्ड फोटो</label>
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="block text-xs font-black text-blue-700 uppercase tracking-wider">आधार कार्ड फोटो</label>
+                      {editingMember.aadhaarImage && (
+                        <button 
+                          onClick={() => downloadImage(editingMember.aadhaarImage!, editingMember.voterName)}
+                          className="text-[10px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-all flex items-center gap-1.5"
+                        >
+                          <i className="fa-solid fa-download"></i>
+                          फोटो सेव करें
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-col sm:flex-row gap-4 items-center">
                       <div 
-                        className="w-full sm:w-32 h-32 bg-white rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-blue-100 transition-colors"
-                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full sm:w-32 h-32 bg-white rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-blue-100 transition-colors group relative"
+                        onClick={() => {
+                          if (editingMember.aadhaarImage) {
+                            setEnlargedImage(editingMember.aadhaarImage);
+                          } else {
+                            fileInputRef.current?.click();
+                          }
+                        }}
                       >
                         {editingMember.aadhaarImage ? (
-                          <img src={editingMember.aadhaarImage} alt="Aadhaar" className="w-full h-full object-cover" />
+                          <>
+                            <img src={editingMember.aadhaarImage} alt="Aadhaar" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <i className="fa-solid fa-expand text-white text-xl"></i>
+                            </div>
+                          </>
                         ) : (
                           <div className="text-center p-2">
                             <i className="fa-solid fa-camera text-blue-300 text-2xl mb-1"></i>
@@ -513,6 +546,36 @@ const App: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Enlarged Image Viewer */}
+      {enlargedImage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setEnlargedImage(null)}>
+          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+            <button 
+              className="absolute -top-12 right-0 text-white text-3xl hover:text-blue-400 transition-colors"
+              onClick={() => setEnlargedImage(null)}
+            >
+              <i className="fa-solid fa-circle-xmark"></i>
+            </button>
+            <img 
+              src={enlargedImage} 
+              alt="Enlarged Aadhaar" 
+              className="w-full h-full object-contain rounded-xl shadow-2xl" 
+              onClick={(e) => e.stopPropagation()} 
+            />
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                downloadImage(enlargedImage, editingMember?.voterName || 'Document');
+              }}
+              className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-black px-8 py-4 rounded-2xl shadow-xl flex items-center gap-3 transition-transform hover:scale-105 active:scale-95"
+            >
+              <i className="fa-solid fa-download text-xl"></i>
+              फोटो सेव करें
+            </button>
+          </div>
+        </div>
+      )}
 
       {aadhaarWarning.show && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-md">
