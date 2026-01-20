@@ -8,13 +8,6 @@
 const SHEET_NAME_DATA = "Data";
 const SHEET_NAME_DELETED = "Deleted";
 
-// Mapping of columns based on index
-const COLUMNS = [
-  "बूथ संख्या", "वार्ड संख्या", "मतदाता क्रमांक", "मकान नं०", "SVN", 
-  "निर्वाचक का नाम", "पिता/पति/माता का नाम", "लिंग", "आयु", 
-  "आधार संख्या", "जन्म तिथि", "उम्र", "आधार कार्ड फोटो"
-];
-
 function doGet(e) {
   const action = e.parameter.action;
   
@@ -56,9 +49,8 @@ function handleGetData() {
   
   const headers = values[0];
   const data = values.slice(1).map((row, index) => {
-    let obj = { rowId: index + 2 }; // Row index in sheet
+    let obj = { rowId: index + 2 }; 
     headers.forEach((header, idx) => {
-      // Map Hindi headers to JS camelCase keys as defined in types.ts
       const keyMap = {
         "बूथ संख्या": "boothNo",
         "वार्ड संख्या": "wardNo",
@@ -77,7 +69,6 @@ function handleGetData() {
       const key = keyMap[header] || header;
       let val = row[idx];
       
-      // Handle date formatting
       if (val instanceof Date) {
         val = val.toISOString().split('T')[0];
       }
@@ -94,7 +85,6 @@ function handleSaveMember(memberData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME_DATA);
   
-  // Ensure "आधार कार्ड फोटो" header exists if not present
   const lastCol = sheet.getLastColumn();
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   if (headers.indexOf("आधार कार्ड फोटो") === -1) {
@@ -103,8 +93,6 @@ function handleSaveMember(memberData) {
   }
 
   const values = sheet.getDataRange().getValues();
-  
-  // Find row by SVN
   let rowIndex = -1;
   const svnColIndex = headers.indexOf("SVN");
   
@@ -132,7 +120,6 @@ function handleSaveMember(memberData) {
       "aadhaarImage": "आधार कार्ड फोटो"
     };
     
-    // Reverse look up to find value in memberData object
     for (let key in keyMapInverse) {
       if (keyMapInverse[key] === header) {
         return memberData[key] || "";
@@ -156,7 +143,6 @@ function handleDeleteMember(memberData) {
   const deletedSheet = ss.getSheetByName(SHEET_NAME_DELETED);
   
   if (!deletedSheet) {
-    // Create deleted sheet if not exists with extra column for reason
     ss.insertSheet(SHEET_NAME_DELETED);
     const headers = dataSheet.getRange(1, 1, 1, dataSheet.getLastColumn()).getValues()[0];
     headers.push("हटाने का कारण");
@@ -171,11 +157,9 @@ function handleDeleteMember(memberData) {
   for (let i = 1; i < values.length; i++) {
     if (values[i][svnColIndex].toString() === memberData.svn.toString()) {
       rowIndex = i + 1;
-      // Copy to deleted sheet
       const rowToMove = values[i];
       rowToMove.push(memberData.reason || "");
       ss.getSheetByName(SHEET_NAME_DELETED).appendRow(rowToMove);
-      // Delete from data sheet
       dataSheet.deleteRow(rowIndex);
       return createJsonResponse({ success: true });
     }
