@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Member, DeleteReason } from './types';
 import { fetchData, saveMember, deleteMember } from './services/gasService';
 import { DELETE_REASONS, TARGET_DATE, GENDER_OPTIONS } from './constants';
+import { GoogleGenAI } from "@google/genai";
 
 const App: React.FC = () => {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -27,8 +28,15 @@ const App: React.FC = () => {
   });
 
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scannerStatus, setScannerStatus] = useState<string>('कैमरा शुरू हो रहा है...');
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scannerInterval = useRef<number | null>(null);
+
+  // Initialize Gemini for OCR
+  const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY || '' }), []);
 
   // Load initial data
   useEffect(() => {
@@ -58,7 +66,6 @@ const App: React.FC = () => {
     return Array.from(new Set(allMembers.filter(m => m.boothNo === filters.booth && m.wardNo === filters.ward).map(m => m.houseNo))).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
   }, [allMembers, filters.booth, filters.ward]);
 
-  // Member selection logic based on active mode
   const filteredMembers = useMemo(() => {
     if (searchMode === 'selection') {
       if (!filters.booth || !filters.ward || !filters.house) return [];
@@ -82,7 +89,6 @@ const App: React.FC = () => {
     return [];
   }, [allMembers, filters, searchQuery, searchMode]);
 
-  // Age calculation helper
   const calculateAgeAtTarget = (dobString: string): string => {
     if (!dobString) return '';
     const birthDate = new Date(dobString);
@@ -105,31 +111,102 @@ const App: React.FC = () => {
     setEditingMember(updated);
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // --- OCR & SCANNER LOGIC ---
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        // Resize image to ensure base64 string doesn't exceed Google Sheet cell limits (~50k chars)
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 600; // Increased width slightly for better quality on zoom
-        const scaleSize = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scaleSize;
+  const processFrame = async (base64Image: string) => {
+    try {
+      setScannerStatus('आधार विवरण निकाल रहा है...');
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [
+          {
+            parts: [
+              { inlineData: { mimeType: 'image/jpeg', data: base64Image.split(',')[1] } },
+              { text: "This is an Aadhaar card. Extract the 12-digit Aadhaar number and the Date of Birth (format: YYYY-MM-DD). Return ONLY a JSON object like {\"aadhaar\": \"...\", \"dob\": \"...\"}. If you cannot find them clearly, return null." }
+            ]
+          }
+        ],
+        config: { responseMimeType: 'application/json' }
+      });
 
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Export as medium-quality jpeg to save space while keeping enough detail
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        handleEditChange('aadhaarImage', dataUrl);
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+      const result = JSON.parse(response.text || 'null');
+      if (result && result.aadhaar) {
+        // Success!
+        handleEditChange('aadhaar', result.aadhaar.replace(/\s/g, ''));
+        if (result.dob) {
+          handleEditChange('dob', result.dob);
+        }
+        handleEditChange('aadhaarImage', base64Image);
+        stopScanner();
+        setIsScannerOpen(false);
+        alert('आधार विवरण सफलतापूर्वक प्राप्त किया गया!');
+      } else {
+        setScannerStatus('आधार कार्ड नहीं मिला, कृपया सही से पकड़ें...');
+      }
+    } catch (error) {
+      console.error('OCR Error:', error);
+      setScannerStatus('फिर से कोशिश कर रहा है...');
+    }
+  };
+
+  const captureFrame = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Compress for Gemini (max 600px width)
+    const MAX_WIDTH = 600;
+    const scale = MAX_WIDTH / canvas.width;
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = MAX_WIDTH;
+    finalCanvas.height = canvas.height * scale;
+    const finalCtx = finalCanvas.getContext('2d');
+    finalCtx?.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
+
+    const base64 = finalCanvas.toDataURL('image/jpeg', 0.8);
+    await processFrame(base64);
+  }, []);
+
+  const startScanner = async () => {
+    setIsScannerOpen(true);
+    setScannerStatus('कैमरा शुरू हो रहा है...');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setScannerStatus('आधार कार्ड को आयत (Rectangle) में रखें...');
+          // Start auto-capture every 3 seconds
+          scannerInterval.current = window.setInterval(captureFrame, 3000);
+        };
+      }
+    } catch (err) {
+      console.error('Camera Access Error:', err);
+      alert('कैमरा एक्सेस करने में विफल। कृपया अनुमति दें।');
+      setIsScannerOpen(false);
+    }
+  };
+
+  const stopScanner = () => {
+    if (scannerInterval.current) {
+      clearInterval(scannerInterval.current);
+      scannerInterval.current = null;
+    }
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setIsScannerOpen(false);
   };
 
   const downloadImage = (dataUrl: string, name: string) => {
@@ -287,6 +364,52 @@ const App: React.FC = () => {
         )}
       </div>
 
+      {/* Scanner Modal */}
+      {isScannerOpen && (
+        <div className="fixed inset-0 bg-black z-[110] flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="absolute top-6 left-0 right-0 z-10 text-center px-4">
+             <div className="inline-block bg-blue-600 text-white font-black px-6 py-2 rounded-full shadow-lg text-sm mb-2 animate-pulse">
+               {scannerStatus}
+             </div>
+          </div>
+
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover rounded-3xl"
+            />
+            
+            {/* Overlay Rectangle */}
+            <div className="absolute border-4 border-blue-500 rounded-2xl w-[85%] max-w-[400px] aspect-[1.6/1] shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] flex items-center justify-center pointer-events-none">
+               <div className="w-8 h-8 border-t-4 border-l-4 border-white absolute top-[-4px] left-[-4px] rounded-tl-xl"></div>
+               <div className="w-8 h-8 border-t-4 border-r-4 border-white absolute top-[-4px] right-[-4px] rounded-tr-xl"></div>
+               <div className="w-8 h-8 border-b-4 border-l-4 border-white absolute bottom-[-4px] left-[-4px] rounded-bl-xl"></div>
+               <div className="w-8 h-8 border-b-4 border-r-4 border-white absolute bottom-[-4px] right-[-4px] rounded-br-xl"></div>
+            </div>
+          </div>
+
+          <div className="absolute bottom-10 flex gap-4">
+            <button 
+              onClick={stopScanner}
+              className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-black px-8 py-4 rounded-2xl transition-all border border-white/30"
+            >
+              रद्द करें
+            </button>
+            <button 
+              onClick={captureFrame}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black px-12 py-4 rounded-2xl shadow-xl transition-all flex items-center gap-2"
+            >
+              <i className="fa-solid fa-camera"></i>
+              स्कैन करें
+            </button>
+          </div>
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      )}
+
       {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 backdrop-blur-[2px]">
@@ -337,6 +460,13 @@ const App: React.FC = () => {
                           <span className="px-2 py-1 bg-gray-100 rounded-lg text-[10px] font-black text-gray-600 uppercase tracking-tighter">SVN: {member.svn}</span>
                           <span className="px-2 py-1 bg-gray-100 rounded-lg text-[10px] font-black text-gray-600 uppercase tracking-tighter">आयु: {member.age}</span>
                         </div>
+                        {member.aadhaarImage && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase border border-emerald-100">
+                              <i className="fa-solid fa-check-circle mr-1"></i> आधार फोटो उपलब्ध
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="shrink-0">
                         <div className="bg-blue-600 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-sm">
@@ -389,7 +519,7 @@ const App: React.FC = () => {
                   {/* Aadhaar Image Section */}
                   <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
                     <div className="flex justify-between items-center mb-3">
-                      <label className="block text-xs font-black text-blue-700 uppercase tracking-wider">आधार कार्ड फोटो</label>
+                      <label className="block text-xs font-black text-blue-700 uppercase tracking-wider">आधार कार्ड फोटो एवं स्कैन</label>
                       {editingMember.aadhaarImage && (
                         <button 
                           onClick={() => downloadImage(editingMember.aadhaarImage!, editingMember.voterName)}
@@ -402,12 +532,12 @@ const App: React.FC = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-4 items-center">
                       <div 
-                        className="w-full sm:w-32 h-32 bg-white rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-blue-100 transition-colors group relative"
+                        className="w-full sm:w-40 h-40 bg-white rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-blue-100 transition-colors group relative shadow-inner"
                         onClick={() => {
                           if (editingMember.aadhaarImage) {
                             setEnlargedImage(editingMember.aadhaarImage);
                           } else {
-                            fileInputRef.current?.click();
+                            startScanner();
                           }
                         }}
                       >
@@ -420,35 +550,22 @@ const App: React.FC = () => {
                           </>
                         ) : (
                           <div className="text-center p-2">
-                            <i className="fa-solid fa-camera text-blue-300 text-2xl mb-1"></i>
-                            <p className="text-[10px] font-bold text-blue-400">फोटो चुनें</p>
+                            <i className="fa-solid fa-camera text-blue-300 text-3xl mb-1"></i>
+                            <p className="text-[10px] font-bold text-blue-400">स्कैन करें</p>
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 space-y-2 w-full">
-                        <input 
-                          type="file" 
-                          ref={fileInputRef}
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={handleImageUpload}
-                        />
+                      <div className="flex-1 space-y-3 w-full">
                         <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full bg-white border-2 border-blue-200 text-blue-700 font-bold py-2 px-4 rounded-xl text-sm hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                          onClick={startScanner}
+                          className="w-full bg-blue-600 text-white font-black py-4 px-4 rounded-2xl text-sm shadow-lg hover:bg-blue-700 hover:shadow-blue-200 transition-all flex items-center justify-center gap-3 transform active:scale-95"
                         >
-                          <i className="fa-solid fa-camera-rotate"></i>
-                          {editingMember.aadhaarImage ? 'फोटो बदलें' : 'कैमरा / गैलरी'}
+                          <i className="fa-solid fa-qrcode text-xl"></i>
+                          {editingMember.aadhaarImage ? 'फिर से स्कैन करें' : 'आधार कार्ड स्कैन करें'}
                         </button>
-                        {editingMember.aadhaarImage && (
-                          <button 
-                            onClick={() => handleEditChange('aadhaarImage', '')}
-                            className="w-full text-rose-500 font-bold text-xs hover:underline"
-                          >
-                            फोटो हटाएं
-                          </button>
-                        )}
+                        <p className="text-[10px] text-gray-400 text-center font-bold px-2">
+                          * आधार नंबर और जन्म तिथि अपने आप भर जाएगी
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -493,7 +610,7 @@ const App: React.FC = () => {
                       <label className="block text-xs font-bold text-gray-600 mb-1.5">आधार संख्या</label>
                       <input 
                         maxLength={12}
-                        className="w-full border-gray-200 rounded-xl p-3 border-2 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono tracking-[0.2em] font-black text-lg text-center"
+                        className="w-full border-gray-200 rounded-xl p-3 border-2 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono tracking-[0.2em] font-black text-lg text-center bg-white"
                         value={editingMember.aadhaar}
                         placeholder="0000 0000 0000"
                         onChange={(e) => handleEditChange('aadhaar', e.target.value.replace(/\D/g, ''))}
@@ -549,7 +666,7 @@ const App: React.FC = () => {
 
       {/* Enlarged Image Viewer */}
       {enlargedImage && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setEnlargedImage(null)}>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[120] p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setEnlargedImage(null)}>
           <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
             <button 
               className="absolute -top-12 right-0 text-white text-3xl hover:text-blue-400 transition-colors"
@@ -577,8 +694,9 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Aadhaar Warning Modal */}
       {aadhaarWarning.show && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-md">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[130] p-4 backdrop-blur-md">
           <div className="bg-white rounded-[2rem] max-w-md w-full p-8 shadow-2xl border-t-[12px] border-amber-500 animate-in fade-in zoom-in duration-300">
             <div className="text-amber-500 text-6xl mb-6 text-center">
               <i className="fa-solid fa-id-card-clip"></i>
@@ -606,8 +724,9 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
       {showDeleteModal.show && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-md">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[130] p-4 backdrop-blur-md">
           <div className="bg-white rounded-[2rem] max-w-md w-full p-8 shadow-2xl border-t-[12px] border-rose-600 animate-in fade-in zoom-in duration-300">
             <h3 className="text-2xl font-black text-gray-900 mb-2 text-center">सदस्य हटाएं</h3>
             <p className="text-sm text-gray-500 text-center mb-8 font-medium">
