@@ -63,8 +63,7 @@ function handleGetData() {
         "आयु": "age",
         "आधार संख्या": "aadhaar",
         "जन्म तिथि": "dob",
-        "उम्र": "calculatedAge",
-        "आधार कार्ड फोटो": "aadhaarImage"
+        "उम्र": "calculatedAge"
       };
       const key = keyMap[header] || header;
       let val = row[idx];
@@ -87,10 +86,6 @@ function handleSaveMember(memberData) {
   
   const lastCol = sheet.getLastColumn();
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  if (headers.indexOf("आधार कार्ड फोटो") === -1) {
-    sheet.getRange(1, lastCol + 1).setValue("आधार कार्ड फोटो");
-    headers.push("आधार कार्ड फोटो");
-  }
 
   const values = sheet.getDataRange().getValues();
   let rowIndex = -1;
@@ -116,8 +111,7 @@ function handleSaveMember(memberData) {
       "age": "आयु",
       "aadhaar": "आधार संख्या",
       "dob": "जन्म तिथि",
-      "calculatedAge": "उम्र",
-      "aadhaarImage": "आधार कार्ड फोटो"
+      "calculatedAge": "उम्र"
     };
     
     for (let key in keyMapInverse) {
