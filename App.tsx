@@ -26,6 +26,11 @@ const App: React.FC = () => {
     duplicate: null
   });
 
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
   // Load initial data
   useEffect(() => {
     const load = async () => {
@@ -99,6 +104,45 @@ const App: React.FC = () => {
       }
       return updated;
     });
+  };
+
+  const startCamera = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setStream(s);
+      if (videoRef.current) {
+        videoRef.current.srcObject = s;
+      }
+      setIsCameraActive(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      alert("कैमरा एक्सेस करने में विफल");
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        handleEditChange('aadhaarImage', dataUrl);
+        stopCamera();
+      }
+    }
   };
 
   const handleSave = async (member: Member) => {
@@ -257,13 +301,21 @@ const App: React.FC = () => {
                   key={member.svn} 
                   onClick={() => {
                     setEditingMember({...member, calculatedAge: calculateAgeAtTarget(member.dob)});
-                    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll up to see editor on mobile
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className={`group relative cursor-pointer transition-all p-6 rounded-3xl border-2 overflow-hidden flex flex-col justify-between h-full hover:shadow-2xl hover:-translate-y-1 ${editingMember?.svn === member.svn ? 'border-blue-600 bg-blue-50 shadow-xl shadow-blue-100' : 'border-white bg-white shadow-md shadow-gray-100'}`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="bg-gray-100/80 p-2.5 rounded-2xl group-hover:bg-blue-100 transition-colors">
-                      <i className={`fa-solid ${member.gender === 'म' ? 'fa-person-dress' : 'fa-person'} text-xl text-gray-500 group-hover:text-blue-600`}></i>
+                    <div className="flex items-center gap-3">
+                      {member.aadhaarImage ? (
+                        <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm border border-gray-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEnlargedImage(member.aadhaarImage!); }}>
+                          <img src={member.aadhaarImage} alt="Voter" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="bg-gray-100/80 p-2.5 rounded-2xl group-hover:bg-blue-100 transition-colors shrink-0">
+                          <i className={`fa-solid ${member.gender === 'म' ? 'fa-person-dress' : 'fa-person'} text-xl text-gray-500 group-hover:text-blue-600`}></i>
+                        </div>
+                      )}
                     </div>
                     <div className="text-[11px] font-black text-blue-600 bg-blue-100/50 px-3 py-1.5 rounded-full tracking-tighter">
                       CR#{member.voterSerial}
@@ -290,12 +342,6 @@ const App: React.FC = () => {
                       </span>
                     </div>
                   </div>
-
-                  {editingMember?.svn === member.svn && (
-                    <div className="absolute top-2 right-2 flex gap-1">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></div>
-                    </div>
-                  )}
                 </div>
               ))
             )}
@@ -325,7 +371,46 @@ const App: React.FC = () => {
               </div>
               
               <div className="p-7 space-y-6">
-                {/* Information Badge Grid */}
+                {/* Aadhaar Photo Capture UI */}
+                <div className="bg-blue-50 p-4 rounded-3xl border-2 border-dashed border-blue-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <label className="text-xs font-black text-blue-700 uppercase tracking-widest">आधार कार्ड फोटो</label>
+                    {editingMember.aadhaarImage && (
+                      <button onClick={() => setEnlargedImage(editingMember.aadhaarImage!)} className="text-[10px] font-black text-blue-600 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-blue-100">देखें</button>
+                    )}
+                  </div>
+
+                  {isCameraActive ? (
+                    <div className="space-y-4 animate-in fade-in zoom-in">
+                      <div className="relative aspect-video bg-black rounded-2xl overflow-hidden ring-4 ring-blue-500/20">
+                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 border-[30px] border-black/30 pointer-events-none"></div>
+                        <div className="absolute inset-[30px] border-2 border-white/50 border-dashed pointer-events-none rounded-lg"></div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={capturePhoto} className="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2">
+                          <i className="fa-solid fa-camera"></i> फोटो खींचें
+                        </button>
+                        <button onClick={stopCamera} className="bg-gray-200 text-gray-600 font-black px-6 py-4 rounded-2xl">रद्द</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 h-24 bg-white rounded-2xl border-2 border-gray-100 shadow-inner flex items-center justify-center overflow-hidden shrink-0 group" onClick={() => editingMember.aadhaarImage && setEnlargedImage(editingMember.aadhaarImage)}>
+                        {editingMember.aadhaarImage ? (
+                          <img src={editingMember.aadhaarImage} alt="Capture" className="w-full h-full object-cover" />
+                        ) : (
+                          <i className="fa-solid fa-id-card text-gray-200 text-3xl"></i>
+                        )}
+                      </div>
+                      <button onClick={startCamera} className="flex-1 bg-white hover:bg-gray-50 text-blue-700 border-2 border-blue-100 font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-3 transition-all">
+                        <i className="fa-solid fa-camera-retro text-xl"></i>
+                        {editingMember.aadhaarImage ? 'फोटो बदलें' : 'कैमरा शुरू करें'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">बूथ संख्या</span>
@@ -425,6 +510,16 @@ const App: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Enlarged Image Modal */}
+      {enlargedImage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[500] p-4 backdrop-blur-sm" onClick={() => setEnlargedImage(null)}>
+          <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
+            <img src={enlargedImage} alt="Aadhaar" className="w-full rounded-3xl shadow-2xl" />
+            <button onClick={() => setEnlargedImage(null)} className="absolute -top-12 right-0 text-white text-3xl hover:text-gray-300"><i className="fa-solid fa-circle-xmark"></i></button>
+          </div>
+        </div>
+      )}
 
       {/* Aadhaar Warning Modal */}
       {aadhaarWarning.show && (

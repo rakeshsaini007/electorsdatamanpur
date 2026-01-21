@@ -12,6 +12,7 @@ export interface Member {
   aadhaar: string; // आधार संख्या
   dob: string; // जन्म तिथि
   calculatedAge: string; // उम्र (calculated)
+  aadhaarImage?: string; // आधार फोटो (Base64)
   rowId?: number; // Internal index for updates
 }
 

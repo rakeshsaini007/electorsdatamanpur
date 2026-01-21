@@ -63,7 +63,8 @@ function handleGetData() {
         "आयु": "age",
         "आधार संख्या": "aadhaar",
         "जन्म तिथि": "dob",
-        "उम्र": "calculatedAge"
+        "उम्र": "calculatedAge",
+        "आधार फोटो": "aadhaarImage"
       };
       const key = keyMap[header] || header;
       let val = row[idx];
@@ -111,7 +112,8 @@ function handleSaveMember(memberData) {
       "age": "आयु",
       "aadhaar": "आधार संख्या",
       "dob": "जन्म तिथि",
-      "calculatedAge": "उम्र"
+      "calculatedAge": "उम्र",
+      "aadhaarImage": "आधार फोटो"
     };
     
     for (let key in keyMapInverse) {
