@@ -36,6 +36,34 @@ function doPost(e) {
   }
 }
 
+function ensureHeadersExist(sheet) {
+  const expectedHeaders = [
+    "बूथ संख्या", "वार्ड संख्या", "मतदाता क्रमांक", "मकान नं०", 
+    "SVN", "निर्वाचक का नाम", "पिता/पति/माता का नाम", "लिंग", 
+    "आयु", "आधार संख्या", "जन्म तिथि", "उम्र", "आधार फोटो"
+  ];
+  
+  const lastCol = sheet.getLastColumn();
+  let currentHeaders = [];
+  if (lastCol > 0) {
+    currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  }
+  
+  let headersUpdated = false;
+  expectedHeaders.forEach(header => {
+    if (currentHeaders.indexOf(header) === -1) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(header);
+      headersUpdated = true;
+    }
+  });
+  
+  if (headersUpdated) {
+    SpreadsheetApp.flush();
+    return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  }
+  return currentHeaders;
+}
+
 function handleGetData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME_DATA);
@@ -44,10 +72,10 @@ function handleGetData() {
     return createJsonResponse({ success: false, error: "Sheet 'Data' not found" });
   }
   
+  const headers = ensureHeadersExist(sheet);
   const values = sheet.getDataRange().getValues();
   if (values.length <= 1) return createJsonResponse({ success: true, data: [] });
   
-  const headers = values[0];
   const data = values.slice(1).map((row, index) => {
     let obj = { rowId: index + 2 }; 
     headers.forEach((header, idx) => {
@@ -85,13 +113,13 @@ function handleSaveMember(memberData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME_DATA);
   
-  const lastCol = sheet.getLastColumn();
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-
+  const headers = ensureHeadersExist(sheet);
   const values = sheet.getDataRange().getValues();
   let rowIndex = -1;
   const svnColIndex = headers.indexOf("SVN");
   
+  if (svnColIndex === -1) return createJsonResponse({ success: false, error: "Critical Header 'SVN' missing" });
+
   for (let i = 1; i < values.length; i++) {
     if (values[i][svnColIndex].toString() === memberData.svn.toString()) {
       rowIndex = i + 1;
@@ -99,23 +127,23 @@ function handleSaveMember(memberData) {
     }
   }
   
+  const keyMapInverse = {
+    "boothNo": "बूथ संख्या",
+    "wardNo": "वार्ड संख्या",
+    "voterSerial": "मतदाता क्रमांक",
+    "houseNo": "मकान नं०",
+    "svn": "SVN",
+    "voterName": "निर्वाचक का नाम",
+    "relativeName": "पिता/पति/माता का नाम",
+    "gender": "लिंग",
+    "age": "आयु",
+    "aadhaar": "आधार संख्या",
+    "dob": "जन्म तिथि",
+    "calculatedAge": "उम्र",
+    "aadhaarImage": "आधार फोटो"
+  };
+
   const rowData = headers.map(header => {
-    const keyMapInverse = {
-      "boothNo": "बूथ संख्या",
-      "wardNo": "वार्ड संख्या",
-      "voterSerial": "मतदाता क्रमांक",
-      "houseNo": "मकान नं०",
-      "svn": "SVN",
-      "voterName": "निर्वाचक का नाम",
-      "relativeName": "पिता/पति/माता का नाम",
-      "gender": "लिंग",
-      "age": "आयु",
-      "aadhaar": "आधार संख्या",
-      "dob": "जन्म तिथि",
-      "calculatedAge": "उम्र",
-      "aadhaarImage": "आधार फोटो"
-    };
-    
     for (let key in keyMapInverse) {
       if (keyMapInverse[key] === header) {
         return memberData[key] || "";

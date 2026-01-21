@@ -133,12 +133,25 @@ const App: React.FC = () => {
   const capturePhoto = () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      const video = videoRef.current;
+      
+      // Resize logic to stay under Google Sheets cell limit (50,000 chars)
+      const MAX_WIDTH = 640;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      
+      if (width > MAX_WIDTH) {
+        height = Math.round((height * MAX_WIDTH) / width);
+        width = MAX_WIDTH;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        ctx.drawImage(video, 0, 0, width, height);
+        // Use lower quality to ensure small base64 string
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
         handleEditChange('aadhaarImage', dataUrl);
         stopCamera();
       }
