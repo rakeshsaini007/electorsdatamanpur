@@ -184,21 +184,21 @@ const App: React.FC = () => {
         {searchMode === 'selection' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 animate-in fade-in slide-in-from-top-4">
             <div className="space-y-2">
-              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">बूथ संख्या</label>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">बूथ संख्या</label>
               <select className="w-full border-gray-200 rounded-2xl p-4 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700" value={filters.booth} onChange={(e) => setFilters({ booth: e.target.value, ward: '', house: '' })}>
                 <option value="">-- बूथ चुनें --</option>
                 {booths.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">वार्ड संख्या</label>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">वार्ड संख्या</label>
               <select className="w-full border-gray-200 rounded-2xl p-4 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700 disabled:opacity-40" disabled={!filters.booth} value={filters.ward} onChange={(e) => setFilters({ ...filters, ward: e.target.value, house: '' })}>
                 <option value="">-- वार्ड चुनें --</option>
                 {wards.map(w => <option key={w} value={w}>{w}</option>)}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">मकान नं०</label>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">मकान नं०</label>
               <select className="w-full border-gray-200 rounded-2xl p-4 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700 disabled:opacity-40" disabled={!filters.ward} value={filters.house} onChange={(e) => setFilters({ ...filters, house: e.target.value })}>
                 <option value="">-- मकान चुनें --</option>
                 {houses.map(h => <option key={h} value={h}>{h}</option>)}
@@ -284,12 +284,10 @@ const App: React.FC = () => {
                       <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">{member.svn}</span>
                     </div>
                     <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
-                      <i className="fa-solid fa-booth-curtain text-[10px] text-gray-400"></i>
-                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">B{member.boothNo}/W{member.wardNo}</span>
-                    </div>
-                    <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
-                      <i className="fa-solid fa-house text-[10px] text-gray-400"></i>
-                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">H#{member.houseNo}</span>
+                      <i className="fa-solid fa-location-dot text-[10px] text-gray-400"></i>
+                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">
+                        {member.boothNo}/{member.wardNo}/{member.houseNo}
+                      </span>
                     </div>
                   </div>
 
