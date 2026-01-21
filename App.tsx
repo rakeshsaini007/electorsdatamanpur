@@ -325,6 +325,30 @@ const App: React.FC = () => {
               </div>
               
               <div className="p-7 space-y-6">
+                {/* Information Badge Grid */}
+                <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">बूथ संख्या</span>
+                    <p className="text-sm font-black text-gray-700">{editingMember.boothNo}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">वार्ड संख्या</span>
+                    <p className="text-sm font-black text-gray-700">{editingMember.wardNo}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">मकान नं०</span>
+                    <p className="text-sm font-black text-gray-700">{editingMember.houseNo}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">मतदाता क्रमांक</span>
+                    <p className="text-sm font-black text-gray-700">{editingMember.voterSerial}</p>
+                  </div>
+                  <div className="col-span-2 pt-2 border-t border-gray-100 flex items-center gap-2">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">SVN:</span>
+                    <span className="text-sm font-black text-blue-600 uppercase">{editingMember.svn}</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">निर्वाचक का नाम</label>
