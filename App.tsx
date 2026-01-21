@@ -146,58 +146,61 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-extrabold text-blue-700 mb-2">मतदाता प्रबंधन प्रणाली</h1>
-        <p className="text-gray-500 font-medium">मतदाता विवरण खोजें, संपादित करें और सुरक्षित करें</p>
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <header className="mb-10 text-center">
+        <div className="inline-block bg-blue-100 p-3 rounded-2xl mb-4">
+          <i className="fa-solid fa-users-viewfinder text-3xl text-blue-700"></i>
+        </div>
+        <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">मतदाता प्रबंधन पोर्टल</h1>
+        <p className="text-gray-500 font-medium">निर्वाचक नामावली विवरण खोजें एवं अद्यतन करें</p>
       </header>
 
       {/* Mode Selector */}
-      <div className="flex justify-center mb-6">
-        <div className="bg-gray-200 p-1 rounded-2xl inline-flex shadow-inner">
+      <div className="flex justify-center mb-10">
+        <div className="bg-gray-200/50 backdrop-blur-sm p-1.5 rounded-2xl inline-flex shadow-inner border border-gray-200">
           <button 
             onClick={() => { setSearchMode('selection'); resetSearchState(); }}
-            className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${searchMode === 'selection' ? 'bg-white text-blue-700 shadow-md transform scale-105' : 'text-gray-600 hover:text-gray-800'}`}
+            className={`px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'selection' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <i className="fa-solid fa-list-check mr-2"></i> चयन द्वारा
+            <i className="fa-solid fa-filter-list"></i> चयन द्वारा
           </button>
           <button 
             onClick={() => { setSearchMode('name'); resetSearchState(); }}
-            className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${searchMode === 'name' ? 'bg-white text-blue-700 shadow-md transform scale-105' : 'text-gray-600 hover:text-gray-800'}`}
+            className={`px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'name' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <i className="fa-solid fa-user mr-2"></i> नाम से
+            <i className="fa-solid fa-magnifying-glass"></i> नाम से
           </button>
           <button 
             onClick={() => { setSearchMode('svn'); resetSearchState(); setSearchQuery('SUR'); }}
-            className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${searchMode === 'svn' ? 'bg-white text-blue-700 shadow-md transform scale-105' : 'text-gray-600 hover:text-gray-800'}`}
+            className={`px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'svn' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <i className="fa-solid fa-id-card mr-2"></i> SVN से
+            <i className="fa-solid fa-address-card"></i> SVN से
           </button>
         </div>
       </div>
 
       {/* Main Controls */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 transition-all duration-300">
+      <div className="bg-white p-8 rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 mb-10 transition-all duration-300">
         {searchMode === 'selection' && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">बूथ संख्या</label>
-              <select className="w-full border-gray-300 rounded-xl p-3 bg-gray-50 border font-bold" value={filters.booth} onChange={(e) => setFilters({ booth: e.target.value, ward: '', house: '' })}>
-                <option value="">चुनें...</option>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 animate-in fade-in slide-in-from-top-4">
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">बूथ संख्या</label>
+              <select className="w-full border-gray-200 rounded-2xl p-4 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700" value={filters.booth} onChange={(e) => setFilters({ booth: e.target.value, ward: '', house: '' })}>
+                <option value="">-- बूथ चुनें --</option>
                 {booths.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">वार्ड संख्या</label>
-              <select className="w-full border-gray-300 rounded-xl p-3 bg-gray-50 border disabled:opacity-50 font-bold" disabled={!filters.booth} value={filters.ward} onChange={(e) => setFilters({ ...filters, ward: e.target.value, house: '' })}>
-                <option value="">चुनें...</option>
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">वार्ड संख्या</label>
+              <select className="w-full border-gray-200 rounded-2xl p-4 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700 disabled:opacity-40" disabled={!filters.booth} value={filters.ward} onChange={(e) => setFilters({ ...filters, ward: e.target.value, house: '' })}>
+                <option value="">-- वार्ड चुनें --</option>
                 {wards.map(w => <option key={w} value={w}>{w}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">मकान नं०</label>
-              <select className="w-full border-gray-300 rounded-xl p-3 bg-gray-50 border disabled:opacity-50 font-bold" disabled={!filters.ward} value={filters.house} onChange={(e) => setFilters({ ...filters, house: e.target.value })}>
-                <option value="">चुनें...</option>
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">मकान नं०</label>
+              <select className="w-full border-gray-200 rounded-2xl p-4 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold text-gray-700 disabled:opacity-40" disabled={!filters.ward} value={filters.house} onChange={(e) => setFilters({ ...filters, house: e.target.value })}>
+                <option value="">-- मकान चुनें --</option>
                 {houses.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
             </div>
@@ -205,109 +208,197 @@ const App: React.FC = () => {
         )}
 
         {(searchMode === 'name' || searchMode === 'svn') && (
-          <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-top-2">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{searchMode === 'name' ? 'निर्वाचक का नाम या पिता का नाम' : 'SVN नंबर'}</label>
-            <div className="relative">
-              <input type="text" className="w-full border-gray-300 rounded-xl p-4 pl-12 bg-gray-50 border font-bold uppercase" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="खोजें..." />
-              <i className="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-top-4">
+            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">{searchMode === 'name' ? 'निर्वाचक का नाम या पिता का नाम' : 'SVN नंबर (SUR...)'}</label>
+            <div className="relative group">
+              <input type="text" className="w-full border-gray-200 rounded-2xl p-5 pl-14 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold uppercase text-lg shadow-inner" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="यहां टाइप करना शुरू करें..." />
+              <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : 'fa-id-badge'} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
             </div>
           </div>
         )}
       </div>
 
       {loading && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 backdrop-blur-[2px]">
-          <div className="bg-white p-6 rounded-2xl shadow-2xl flex items-center gap-4 animate-in fade-in zoom-in">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
-            <span className="font-bold text-gray-700">लोड हो रहा है...</span>
+        <div className="fixed inset-0 bg-white/60 flex items-center justify-center z-[200] backdrop-blur-md">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 animate-in zoom-in duration-300">
+            <div className="relative">
+              <div className="h-20 w-20 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin"></div>
+              <i className="fa-solid fa-cloud-arrow-down absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-600 text-2xl"></i>
+            </div>
+            <span className="font-black text-xl text-gray-800 tracking-tight">डाटा लोड हो रहा है...</span>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Member List */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-black text-gray-800 flex items-center gap-2 px-2">
-            <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span> परिणाम ({filteredMembers.length})
-          </h2>
-          <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar space-y-4">
-            {filteredMembers.map(member => (
-              <div key={member.svn} onClick={() => setEditingMember({...member, calculatedAge: calculateAgeAtTarget(member.dob)})} className={`cursor-pointer transition-all p-5 rounded-2xl border-2 flex gap-4 items-center ${editingMember?.svn === member.svn ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-white bg-white shadow-sm'}`}>
-                <div className="flex-1">
-                  <h3 className="text-lg font-black text-gray-900 leading-tight">{member.voterName}</h3>
-                  <p className="text-sm text-gray-500 font-medium">{member.relativeName}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="px-2 py-1 bg-gray-100 rounded-lg text-[10px] font-black text-gray-600">SVN: {member.svn}</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded-lg text-[10px] font-black text-gray-600">बूथ: {member.boothNo}</span>
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+        {/* Member List - Card Layout */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          <div className="flex justify-between items-center px-2">
+            <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
+              <span className="w-2 h-8 bg-blue-600 rounded-full shadow-lg shadow-blue-200"></span>
+              परिणाम <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-xl text-lg">{filteredMembers.length}</span>
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[80vh] overflow-y-auto pr-3 custom-scrollbar">
+            {filteredMembers.length === 0 ? (
+              <div className="md:col-span-2 bg-white rounded-3xl p-20 text-center border-4 border-dashed border-gray-100 flex flex-col items-center justify-center space-y-4">
+                <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center text-gray-200">
+                  <i className="fa-solid fa-magnifying-glass text-5xl"></i>
                 </div>
-                <div className="shrink-0">
-                  <div className="bg-blue-600 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-sm">#{member.voterSerial}</div>
+                <div>
+                  <p className="font-black text-xl text-gray-400">कोई रिकॉर्ड नहीं मिला</p>
+                  <p className="text-gray-400 font-medium">कृपया ऊपर दिए गए विकल्पों का उपयोग करें</p>
                 </div>
               </div>
-            ))}
+            ) : (
+              filteredMembers.map(member => (
+                <div 
+                  key={member.svn} 
+                  onClick={() => {
+                    setEditingMember({...member, calculatedAge: calculateAgeAtTarget(member.dob)});
+                    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll up to see editor on mobile
+                  }}
+                  className={`group relative cursor-pointer transition-all p-6 rounded-3xl border-2 overflow-hidden flex flex-col justify-between h-full hover:shadow-2xl hover:-translate-y-1 ${editingMember?.svn === member.svn ? 'border-blue-600 bg-blue-50 shadow-xl shadow-blue-100' : 'border-white bg-white shadow-md shadow-gray-100'}`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="bg-gray-100/80 p-2.5 rounded-2xl group-hover:bg-blue-100 transition-colors">
+                      <i className={`fa-solid ${member.gender === 'म' ? 'fa-person-dress' : 'fa-person'} text-xl text-gray-500 group-hover:text-blue-600`}></i>
+                    </div>
+                    <div className="text-[11px] font-black text-blue-600 bg-blue-100/50 px-3 py-1.5 rounded-full tracking-tighter">
+                      CR#{member.voterSerial}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-gray-900 leading-tight group-hover:text-blue-700 transition-colors">{member.voterName}</h3>
+                    <p className="text-sm text-gray-500 font-bold mb-4 flex items-center gap-1.5">
+                      <i className="fa-solid fa-user-friends text-[10px] opacity-40"></i>
+                      {member.relativeName}
+                    </p>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+                    <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <i className="fa-solid fa-id-card text-[10px] text-gray-400"></i>
+                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">{member.svn}</span>
+                    </div>
+                    <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <i className="fa-solid fa-booth-curtain text-[10px] text-gray-400"></i>
+                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">B{member.boothNo}/W{member.wardNo}</span>
+                    </div>
+                    <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <i className="fa-solid fa-house text-[10px] text-gray-400"></i>
+                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">H#{member.houseNo}</span>
+                    </div>
+                  </div>
+
+                  {editingMember?.svn === member.svn && (
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
         {/* Editor Form */}
-        <div className="lg:sticky lg:top-8">
+        <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-8">
           {editingMember ? (
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in slide-in-from-right-4">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 text-white flex justify-between items-center shadow-lg">
-                <h3 className="font-black text-lg flex items-center gap-3">
-                  <i className="fa-solid fa-user-edit"></i> विवरण संपादित करें
-                </h3>
-                <button onClick={() => setEditingMember(null)} className="bg-black/10 hover:bg-black/20 rounded-full w-8 h-8 flex items-center justify-center transition-all"><i className="fa-solid fa-xmark"></i></button>
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-right-8 duration-500 ring-1 ring-black/5">
+              <div className="bg-gray-900 p-6 text-white flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-600 p-2.5 rounded-xl">
+                    <i className="fa-solid fa-user-pen text-lg"></i>
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg tracking-tight">सदस्य विवरण</h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">संपादन मोड</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setEditingMember(null)} 
+                  className="bg-white/10 hover:bg-white/20 rounded-full w-10 h-10 flex items-center justify-center transition-all"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
               </div>
               
-              <div className="p-6 space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-600 mb-1.5">निर्वाचक का नाम</label>
-                    <input className="w-full border-gray-200 rounded-xl p-3 border-2 font-bold" value={editingMember.voterName} onChange={(e) => handleEditChange('voterName', e.target.value)} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-600 mb-1.5">पिता/पति/माता का नाम</label>
-                    <input className="w-full border-gray-200 rounded-xl p-3 border-2 font-bold" value={editingMember.relativeName} onChange={(e) => handleEditChange('relativeName', e.target.value)} />
+              <div className="p-7 space-y-6">
+                <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">निर्वाचक का नाम</label>
+                    <input className="w-full border-gray-200 rounded-2xl p-4 border-2 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all text-gray-800" value={editingMember.voterName} onChange={(e) => handleEditChange('voterName', e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1.5">लिंग</label>
-                    <select className="w-full border-gray-200 rounded-xl p-3 border-2 font-bold bg-white" value={editingMember.gender} onChange={(e) => handleEditChange('gender', e.target.value as any)}>
-                      {GENDER_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                    </select>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">पिता/पति/माता का नाम</label>
+                    <input className="w-full border-gray-200 rounded-2xl p-4 border-2 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all text-gray-800" value={editingMember.relativeName} onChange={(e) => handleEditChange('relativeName', e.target.value)} />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">लिंग</label>
+                      <select className="w-full border-gray-200 rounded-2xl p-4 border-2 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all text-gray-800 bg-gray-50" value={editingMember.gender} onChange={(e) => handleEditChange('gender', e.target.value as any)}>
+                        {GENDER_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">आयु (अभिलेख)</label>
+                      <input className="w-full border-gray-200 rounded-2xl p-4 border-2 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all text-gray-800" value={editingMember.age} onChange={(e) => handleEditChange('age', e.target.value)} />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1.5">आयु (अभिलेख)</label>
-                    <input className="w-full border-gray-200 rounded-xl p-3 border-2 font-bold" value={editingMember.age} onChange={(e) => handleEditChange('age', e.target.value)} />
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">आधार संख्या</label>
+                    <div className="relative">
+                      <input maxLength={12} className="w-full border-gray-200 rounded-2xl p-4 pl-12 border-2 font-mono tracking-[0.3em] text-xl font-black text-center focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all text-gray-800" value={editingMember.aadhaar} onChange={(e) => handleEditChange('aadhaar', e.target.value.replace(/\D/g, ''))} placeholder="000000000000" />
+                      <i className="fa-solid fa-fingerprint absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 text-lg"></i>
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1.5">आधार संख्या</label>
-                    <input maxLength={12} className="w-full border-gray-200 rounded-xl p-3 border-2 font-mono tracking-widest text-lg font-black text-center" value={editingMember.aadhaar} onChange={(e) => handleEditChange('aadhaar', e.target.value.replace(/\D/g, ''))} />
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">जन्म तिथि</label>
+                    <input type="date" className="w-full border-gray-200 rounded-2xl p-4 border-2 font-bold focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all text-gray-800 bg-gray-50" value={editingMember.dob} onChange={(e) => handleEditChange('dob', e.target.value)} />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1.5">जन्म तिथि</label>
-                    <input type="date" className="w-full border-gray-200 rounded-xl p-3 border-2 font-bold" value={editingMember.dob} onChange={(e) => handleEditChange('dob', e.target.value)} />
-                  </div>
-                  <div className="col-span-2 flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-                     <span className="text-sm font-bold text-gray-600">उम्र (01-01-2026):</span>
-                     <span className="text-xl font-black text-blue-700">{editingMember.calculatedAge || '--'} वर्ष</span>
+
+                  <div className="flex items-center justify-between p-5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-200">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black uppercase tracking-widest opacity-80">अनुमानित उम्र</span>
+                      <span className="text-xs font-bold opacity-70">(01-01-2026 तक)</span>
+                    </div>
+                    <span className="text-3xl font-black">{editingMember.calculatedAge || '--'} <span className="text-sm">वर्ष</span></span>
                   </div>
                 </div>
 
-                <div className="pt-4 flex gap-3">
-                  <button onClick={() => handleSave(editingMember)} className="flex-[2] bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center gap-3 transform hover:-translate-y-1 active:translate-y-0">
-                    <i className="fa-solid fa-save"></i> {allMembers.find(m => m.svn === editingMember.svn)?.aadhaar ? 'अपडेट' : 'सुरक्षित'}
+                <div className="pt-6 flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={() => handleSave(editingMember)} 
+                    className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-emerald-100 flex items-center justify-center gap-3 transform hover:-translate-y-1 active:translate-y-0 transition-all"
+                  >
+                    <i className="fa-solid fa-circle-check text-xl"></i>
+                    {allMembers.find(m => m.svn === editingMember.svn)?.aadhaar ? 'विवरण अद्यतन करें' : 'विवरण सुरक्षित करें'}
                   </button>
-                  <button onClick={() => setShowDeleteModal({ show: true, member: editingMember, reason: 'शादी' })} className="flex-1 bg-rose-100 text-rose-700 font-black py-4 rounded-2xl flex items-center justify-center gap-2">
-                    <i className="fa-solid fa-trash"></i> हटाएं
+                  <button 
+                    onClick={() => setShowDeleteModal({ show: true, member: editingMember, reason: 'शादी' })} 
+                    className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black py-5 rounded-2xl flex items-center justify-center gap-2 transition-all border border-rose-100"
+                  >
+                    <i className="fa-solid fa-user-xmark"></i>
+                    हटाएं
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl p-16 text-center border-4 border-dashed border-gray-100 text-gray-300 flex flex-col items-center justify-center">
-              <i className="fa-solid fa-mouse-pointer text-4xl mb-4"></i>
-              <p className="font-black text-xl text-gray-400">संपादन के लिए चुनें</p>
+            <div className="bg-white rounded-3xl p-16 text-center border-4 border-dashed border-gray-100 text-gray-300 flex flex-col items-center justify-center space-y-4 shadow-sm">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-200">
+                <i className="fa-solid fa-pen-nib text-3xl"></i>
+              </div>
+              <div>
+                <p className="font-black text-xl text-gray-400">संपादन के लिए चुनें</p>
+                <p className="text-sm font-medium text-gray-400">किसी कार्ड पर क्लिक करके विवरण संपादित करें</p>
+              </div>
             </div>
           )}
         </div>
@@ -315,42 +406,71 @@ const App: React.FC = () => {
 
       {/* Aadhaar Warning Modal */}
       {aadhaarWarning.show && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[130] p-4 backdrop-blur-md">
-          <div className="bg-white rounded-[2rem] max-w-md w-full p-8 shadow-2xl border-t-[12px] border-amber-500">
-            <h3 className="text-2xl font-black text-gray-900 text-center mb-4">आधार पहले से मौजूद है!</h3>
-            <div className="bg-amber-50 p-5 rounded-2xl border-2 border-amber-100 mb-8">
-              <p className="text-xl font-black text-gray-900">{aadhaarWarning.duplicate?.voterName}</p>
-              <p className="text-sm text-gray-700 font-medium">SVN: {aadhaarWarning.duplicate?.svn}</p>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[300] p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] max-w-md w-full p-10 shadow-2xl border-t-[14px] border-amber-500 animate-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i className="fa-solid fa-triangle-exclamation text-amber-500 text-3xl"></i>
             </div>
-            <button onClick={() => setAadhaarWarning({ show: false, duplicate: null })} className="w-full bg-gray-900 text-white font-black py-4 rounded-2xl shadow-xl">ठीक है</button>
+            <h3 className="text-2xl font-black text-gray-900 text-center mb-4">आधार पहले से मौजूद है!</h3>
+            <div className="bg-amber-50 p-6 rounded-3xl border-2 border-amber-100 mb-8 space-y-2">
+              <p className="text-xs font-black text-amber-600 uppercase tracking-widest">मौजूदा सदस्य</p>
+              <p className="text-xl font-black text-gray-900">{aadhaarWarning.duplicate?.voterName}</p>
+              <p className="text-sm text-gray-600 font-bold">SVN: {aadhaarWarning.duplicate?.svn}</p>
+            </div>
+            <button 
+              onClick={() => setAadhaarWarning({ show: false, duplicate: null })} 
+              className="w-full bg-gray-900 hover:bg-black text-white font-black py-5 rounded-2xl shadow-xl transition-all"
+            >
+              ठीक है, विवरण जांचें
+            </button>
           </div>
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal.show && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[130] p-4 backdrop-blur-md">
-          <div className="bg-white rounded-[2rem] max-w-md w-full p-8 shadow-2xl border-t-[12px] border-rose-600">
-            <h3 className="text-2xl font-black text-gray-900 mb-2 text-center">सदस्य हटाएं?</h3>
-            <div className="mb-8 mt-6">
-              <label className="block text-xs font-black text-gray-400 uppercase text-center mb-3">कारण चुनें</label>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[300] p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] max-w-md w-full p-10 shadow-2xl border-t-[14px] border-rose-600 animate-in zoom-in duration-300">
+            <h3 className="text-2xl font-black text-gray-900 mb-2 text-center">सदस्य को हटाएं?</h3>
+            <p className="text-gray-500 text-center font-bold mb-8">क्या आप निश्चित रूप से <span className="text-rose-600">{showDeleteModal.member?.voterName}</span> का रिकॉर्ड हटाना चाहते हैं?</p>
+            
+            <div className="mb-10">
+              <label className="block text-xs font-black text-gray-400 uppercase text-center mb-4 tracking-widest">हटाने का कारण</label>
               <div className="grid grid-cols-2 gap-3">
-                {DELETE_REASONS.map(r => <button key={r} onClick={() => setShowDeleteModal({...showDeleteModal, reason: r})} className={`p-3 rounded-xl font-bold text-sm border-2 transition-all ${showDeleteModal.reason === r ? 'bg-rose-600 border-rose-600 text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-600'}`}>{r}</button>)}
+                {DELETE_REASONS.map(r => (
+                  <button 
+                    key={r} 
+                    onClick={() => setShowDeleteModal({...showDeleteModal, reason: r})} 
+                    className={`p-4 rounded-2xl font-black text-sm border-2 transition-all ${showDeleteModal.reason === r ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-100' : 'bg-gray-50 border-gray-100 text-gray-600 hover:border-rose-200'}`}
+                  >
+                    {r}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="flex gap-4">
-              <button onClick={() => setShowDeleteModal({show: false, member: null, reason: 'शादी'})} className="flex-1 bg-gray-100 text-gray-500 font-black py-4 rounded-2xl">रद्द</button>
-              <button onClick={handleDeleteConfirm} className="flex-1 bg-rose-600 text-white font-black py-4 rounded-2xl shadow-lg">पुष्टि</button>
+              <button 
+                onClick={() => setShowDeleteModal({show: false, member: null, reason: 'शादी'})} 
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 font-black py-5 rounded-2xl transition-all"
+              >
+                रद्द करें
+              </button>
+              <button 
+                onClick={handleDeleteConfirm} 
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-rose-100 transition-all"
+              >
+                पुष्टि करें
+              </button>
             </div>
           </div>
         </div>
       )}
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 20px; border: 2px solid transparent; background-clip: content-box; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; border: 2px solid transparent; background-clip: content-box; }
       `}</style>
     </div>
   );
