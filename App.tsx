@@ -192,7 +192,8 @@ const App: React.FC = () => {
       alert('डाटा सफलतापूर्वक सुरक्षित किया गया!');
       const refreshRes = await fetchData();
       if (refreshRes.data) setAllMembers(refreshRes.data);
-      setEditingMember(null);
+      // Update local editing state to sync with saved data
+      setEditingMember(prev => prev ? {...member} : null);
     } else {
       alert(res.error || 'डाटा सुरक्षित करने में त्रुटि');
     }
@@ -220,6 +221,12 @@ const App: React.FC = () => {
     setFilters({ booth: '', ward: '', house: '' });
     setEditingMember(null);
   };
+
+  const originalMember = useMemo(() => {
+    return allMembers.find(m => m.svn === editingMember?.svn);
+  }, [allMembers, editingMember?.svn]);
+
+  const isPhotoChanged = editingMember?.aadhaarImage && editingMember.aadhaarImage !== originalMember?.aadhaarImage;
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -407,9 +414,19 @@ const App: React.FC = () => {
                 <div className="bg-blue-50 p-4 rounded-3xl border-2 border-dashed border-blue-200">
                   <div className="flex justify-between items-center mb-4">
                     <label className="text-xs font-black text-blue-700 uppercase tracking-widest">आधार कार्ड फोटो</label>
-                    {editingMember.aadhaarImage && (
-                      <button onClick={() => setEnlargedImage(editingMember.aadhaarImage!)} className="text-[10px] font-black text-blue-600 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-blue-100">देखें</button>
-                    )}
+                    <div className="flex gap-2">
+                      {editingMember.aadhaarImage && (
+                        <button onClick={() => setEnlargedImage(editingMember.aadhaarImage!)} className="text-[10px] font-black text-blue-600 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-blue-100">देखें</button>
+                      )}
+                      {isPhotoChanged && (
+                        <button 
+                          onClick={() => handleSave(editingMember)} 
+                          className="text-[10px] font-black text-white bg-blue-600 px-3 py-1.5 rounded-xl shadow-md border border-blue-700 flex items-center gap-1.5"
+                        >
+                          <i className="fa-solid fa-cloud-arrow-up"></i> फोटो सुरक्षित करें
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {isCameraActive ? (
@@ -434,11 +451,19 @@ const App: React.FC = () => {
                     </div>
                   ) : (
                     <div className="flex items-center gap-4">
-                      <div className="w-24 h-24 bg-white rounded-2xl border-2 border-gray-100 shadow-inner flex items-center justify-center overflow-hidden shrink-0 group" onClick={() => editingMember.aadhaarImage && setEnlargedImage(editingMember.aadhaarImage)}>
+                      <div className="w-24 h-24 bg-white rounded-2xl border-2 border-gray-100 shadow-inner flex items-center justify-center overflow-hidden shrink-0 group relative" onClick={() => editingMember.aadhaarImage && setEnlargedImage(editingMember.aadhaarImage)}>
                         {editingMember.aadhaarImage ? (
                           <img src={editingMember.aadhaarImage} alt="Capture" className="w-full h-full object-cover" />
                         ) : (
                           <i className="fa-solid fa-id-card text-gray-200 text-3xl"></i>
+                        )}
+                        {isPhotoChanged && (
+                          <div className="absolute top-1 right-1">
+                            <span className="flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                            </span>
+                          </div>
                         )}
                       </div>
                       <button onClick={startCamera} className="flex-1 bg-white hover:bg-gray-50 text-blue-700 border-2 border-blue-100 font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-3 transition-all">
@@ -523,7 +548,7 @@ const App: React.FC = () => {
                     className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-emerald-100 flex items-center justify-center gap-3 transform hover:-translate-y-1 active:translate-y-0 transition-all"
                   >
                     <i className="fa-solid fa-circle-check text-xl"></i>
-                    {allMembers.find(m => m.svn === editingMember.svn)?.aadhaar ? 'विवरण अद्यतन करें' : 'विवरण सुरक्षित करें'}
+                    विवरण सुरक्षित करें
                   </button>
                   <button 
                     onClick={() => setShowDeleteModal({ show: true, member: editingMember, reason: 'शादी' })} 
