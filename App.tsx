@@ -1,14 +1,12 @@
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Member, DeleteReason } from './types';
 import { fetchData, saveMember, deleteMember } from './services/gasService';
 import { DELETE_REASONS, TARGET_DATE, GENDER_OPTIONS } from './constants';
-import { GoogleGenAI } from "@google/genai";
 
 const App: React.FC = () => {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
   const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'svn'>('selection');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -29,15 +27,7 @@ const App: React.FC = () => {
   });
 
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [scannerStatus, setScannerStatus] = useState<string>('कैमरा शुरू हो रहा है...');
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const scannerInterval = useRef<number | null>(null);
-
-  // Initialize Gemini for OCR
-  const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY || '' }), []);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load initial data
   useEffect(() => {
@@ -114,114 +104,29 @@ const App: React.FC = () => {
     });
   };
 
-  // --- OCR & SCANNER LOGIC ---
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const processFrame = async (base64Image: string) => {
-    if (isProcessingOCR) return;
-    setIsProcessingOCR(true);
-    
-    try {
-      setScannerStatus('आधार विवरण निकाल रहा है...');
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [
-          {
-            parts: [
-              { inlineData: { mimeType: 'image/jpeg', data: base64Image.split(',')[1] } },
-              { text: "Extract Aadhaar details from this card. Return strictly JSON: {\"aadhaar\": \"12-digit number\", \"dob\": \"YYYY-MM-DD\"}. Ensure DOB is in YYYY-MM-DD format even if written as DD/MM/YYYY on card. If not found, return {\"aadhaar\":null, \"dob\":null}." }
-            ]
-          }
-        ],
-        config: { responseMimeType: 'application/json' }
-      });
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 600;
+        const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scaleSize;
 
-      const result = JSON.parse(response.text || '{"aadhaar":null}');
-      
-      if (result && result.aadhaar) {
-        const cleanAadhaar = result.aadhaar.replace(/\s/g, '');
-        const cleanDob = result.dob;
-
-        setEditingMember(prev => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            aadhaar: cleanAadhaar,
-            dob: cleanDob || prev.dob,
-            calculatedAge: cleanDob ? calculateAgeAtTarget(cleanDob) : prev.calculatedAge,
-            aadhaarImage: base64Image
-          };
-        });
-
-        stopScanner();
-        alert('आधार विवरण सफलतापूर्वक प्राप्त किया गया!');
-      } else {
-        setScannerStatus('आधार कार्ड नहीं मिला, कृपया फिर से प्रयास करें...');
-      }
-    } catch (error) {
-      console.error('OCR Error:', error);
-      setScannerStatus('स्कैनिंग विफल, पुनः प्रयास...');
-    } finally {
-      setIsProcessingOCR(false);
-    }
-  };
-
-  const captureFrame = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isProcessingOCR) return;
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const MAX_WIDTH = 800;
-    const scale = MAX_WIDTH / canvas.width;
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = MAX_WIDTH;
-    finalCanvas.height = canvas.height * scale;
-    const finalCtx = finalCanvas.getContext('2d');
-    finalCtx?.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
-
-    const base64 = finalCanvas.toDataURL('image/jpeg', 0.8);
-    await processFrame(base64);
-  }, [isProcessingOCR]);
-
-  const startScanner = async () => {
-    setIsScannerOpen(true);
-    setScannerStatus('कैमरा शुरू हो रहा है...');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setScannerStatus('आधार कार्ड को आयत (Rectangle) में रखें...');
-          scannerInterval.current = window.setInterval(captureFrame, 4000);
-        };
-      }
-    } catch (err) {
-      console.error('Camera Error:', err);
-      alert('कैमरा अनुमति नहीं मिली।');
-      setIsScannerOpen(false);
-    }
-  };
-
-  const stopScanner = () => {
-    if (scannerInterval.current) {
-      clearInterval(scannerInterval.current);
-      scannerInterval.current = null;
-    }
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-    }
-    setIsScannerOpen(false);
-    setIsProcessingOCR(false);
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        handleEditChange('aadhaarImage', dataUrl);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const downloadImage = (dataUrl: string, name: string) => {
@@ -347,28 +252,6 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* Scanner Overlay */}
-      {isScannerOpen && (
-        <div className="fixed inset-0 bg-black z-[110] flex flex-col items-center justify-center">
-          <div className="absolute top-6 z-10 text-center px-4">
-             <div className="bg-blue-600 text-white font-black px-6 py-2 rounded-full shadow-lg text-sm mb-2">
-               {scannerStatus}
-             </div>
-          </div>
-          <div className="relative w-full h-full flex items-center justify-center p-4">
-            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover rounded-3xl" />
-            <div className="absolute border-4 border-blue-500 rounded-2xl w-[85%] max-w-[400px] aspect-[1.6/1] shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] pointer-events-none"></div>
-          </div>
-          <div className="absolute bottom-10 flex gap-4">
-            <button onClick={stopScanner} className="bg-white/10 text-white font-black px-8 py-4 rounded-2xl border border-white/30">रद्द करें</button>
-            <button onClick={captureFrame} className="bg-blue-600 text-white font-black px-12 py-4 rounded-2xl shadow-xl flex items-center gap-2">
-              <i className="fa-solid fa-camera"></i> {isProcessingOCR ? 'प्रोसेसिंग...' : 'स्कैन करें'}
-            </button>
-          </div>
-          <canvas ref={canvasRef} className="hidden" />
-        </div>
-      )}
-
       {loading && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 backdrop-blur-[2px]">
           <div className="bg-white p-6 rounded-2xl shadow-2xl flex items-center gap-4 animate-in fade-in zoom-in">
@@ -422,7 +305,7 @@ const App: React.FC = () => {
               <div className="p-6 space-y-5">
                 <div className="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
                   <div className="flex justify-between items-center mb-3">
-                    <label className="text-xs font-black text-blue-700 uppercase">आधार स्कैन</label>
+                    <label className="text-xs font-black text-blue-700 uppercase">आधार फोटो</label>
                     {editingMember.aadhaarImage && (
                       <button onClick={() => downloadImage(editingMember.aadhaarImage!, editingMember.voterName)} className="text-[10px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                         <i className="fa-solid fa-download"></i> सेव करें
@@ -430,19 +313,20 @@ const App: React.FC = () => {
                     )}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 items-center">
-                    <div className="w-full sm:w-40 h-40 bg-white rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-blue-100 relative group" onClick={() => editingMember.aadhaarImage ? setEnlargedImage(editingMember.aadhaarImage) : startScanner()}>
+                    <div className="w-full sm:w-40 h-40 bg-white rounded-xl border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden cursor-pointer hover:bg-blue-100 relative group shadow-inner" onClick={() => editingMember.aadhaarImage ? setEnlargedImage(editingMember.aadhaarImage) : fileInputRef.current?.click()}>
                       {editingMember.aadhaarImage ? (
                         <>
                           <img src={editingMember.aadhaarImage} alt="Aadhaar" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-expand text-white text-xl"></i></div>
                         </>
                       ) : (
-                        <div className="text-center p-2"><i className="fa-solid fa-camera text-blue-300 text-3xl mb-1"></i><p className="text-[10px] font-bold text-blue-400">स्कैन शुरू करें</p></div>
+                        <div className="text-center p-2"><i className="fa-solid fa-image text-blue-300 text-3xl mb-1"></i><p className="text-[10px] font-bold text-blue-400">फोटो चुनें</p></div>
                       )}
                     </div>
                     <div className="flex-1 w-full space-y-3">
-                      <button onClick={startScanner} className="w-full bg-blue-600 text-white font-black py-4 px-4 rounded-2xl text-sm shadow-lg flex items-center justify-center gap-3">
-                        <i className="fa-solid fa-qrcode text-xl"></i> {editingMember.aadhaarImage ? 'फिर से स्कैन करें' : 'कार्ड स्कैन करें'}
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                      <button onClick={() => fileInputRef.current?.click()} className="w-full bg-blue-600 text-white font-black py-4 px-4 rounded-2xl text-sm shadow-lg flex items-center justify-center gap-3 transform active:scale-95">
+                        <i className="fa-solid fa-upload text-xl"></i> {editingMember.aadhaarImage ? 'फोटो बदलें' : 'फोटो अपलोड करें'}
                       </button>
                     </div>
                   </div>
@@ -472,7 +356,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="pt-4 flex gap-3">
-                  <button onClick={() => handleSave(editingMember)} className="flex-[2] bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center gap-3">
+                  <button onClick={() => handleSave(editingMember)} className="flex-[2] bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg flex items-center justify-center gap-3 transform hover:-translate-y-1 active:translate-y-0">
                     <i className="fa-solid fa-save"></i> {allMembers.find(m => m.svn === editingMember.svn)?.aadhaar ? 'अपडेट' : 'सुरक्षित'}
                   </button>
                   <button onClick={() => setShowDeleteModal({ show: true, member: editingMember, reason: 'शादी' })} className="flex-1 bg-rose-100 text-rose-700 font-black py-4 rounded-2xl flex items-center justify-center gap-2">
@@ -496,11 +380,12 @@ const App: React.FC = () => {
           <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
              <button className="absolute -top-12 right-0 text-white text-3xl" onClick={() => setEnlargedImage(null)}><i className="fa-solid fa-times-circle"></i></button>
              <img src={enlargedImage} alt="Enlarged" className="w-full h-full object-contain rounded-xl shadow-2xl" />
-             <button onClick={() => downloadImage(enlargedImage, editingMember?.voterName || 'Voter')} className="mt-6 bg-blue-600 text-white font-black px-8 py-4 rounded-2xl flex items-center gap-3"><i className="fa-solid fa-download"></i> फोटो सेव करें</button>
+             <button onClick={() => downloadImage(enlargedImage, editingMember?.voterName || 'Voter')} className="mt-6 bg-blue-600 text-white font-black px-8 py-4 rounded-2xl flex items-center gap-3 transition-transform hover:scale-105"><i className="fa-solid fa-download"></i> फोटो सेव करें</button>
           </div>
         </div>
       )}
 
+      {/* Aadhaar Warning Modal */}
       {aadhaarWarning.show && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[130] p-4 backdrop-blur-md">
           <div className="bg-white rounded-[2rem] max-w-md w-full p-8 shadow-2xl border-t-[12px] border-amber-500">
@@ -509,19 +394,20 @@ const App: React.FC = () => {
               <p className="text-xl font-black text-gray-900">{aadhaarWarning.duplicate?.voterName}</p>
               <p className="text-sm text-gray-700 font-medium">SVN: {aadhaarWarning.duplicate?.svn}</p>
             </div>
-            <button onClick={() => setAadhaarWarning({ show: false, duplicate: null })} className="w-full bg-gray-900 text-white font-black py-4 rounded-2xl">ठीक है</button>
+            <button onClick={() => setAadhaarWarning({ show: false, duplicate: null })} className="w-full bg-gray-900 text-white font-black py-4 rounded-2xl shadow-xl">ठीक है</button>
           </div>
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
       {showDeleteModal.show && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[130] p-4 backdrop-blur-md">
           <div className="bg-white rounded-[2rem] max-w-md w-full p-8 shadow-2xl border-t-[12px] border-rose-600">
             <h3 className="text-2xl font-black text-gray-900 mb-2 text-center">सदस्य हटाएं?</h3>
             <div className="mb-8 mt-6">
-              <label className="block text-xs font-black text-gray-400 uppercase text-center mb-3">कारण</label>
+              <label className="block text-xs font-black text-gray-400 uppercase text-center mb-3">कारण चुनें</label>
               <div className="grid grid-cols-2 gap-3">
-                {DELETE_REASONS.map(r => <button key={r} onClick={() => setShowDeleteModal({...showDeleteModal, reason: r})} className={`p-3 rounded-xl font-bold text-sm border-2 ${showDeleteModal.reason === r ? 'bg-rose-600 border-rose-600 text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-600'}`}>{r}</button>)}
+                {DELETE_REASONS.map(r => <button key={r} onClick={() => setShowDeleteModal({...showDeleteModal, reason: r})} className={`p-3 rounded-xl font-bold text-sm border-2 transition-all ${showDeleteModal.reason === r ? 'bg-rose-600 border-rose-600 text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-600'}`}>{r}</button>)}
               </div>
             </div>
             <div className="flex gap-4">

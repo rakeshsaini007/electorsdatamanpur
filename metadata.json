@@ -1,7 +1,5 @@
 {
   "name": "Voter Management System",
   "description": "A robust React application for managing voter data stored in Google Sheets, featuring search, conditional filters, Aadhaar validation, and automated age calculation as of Jan 1, 2026.",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "requestFramePermissions": []
 }
