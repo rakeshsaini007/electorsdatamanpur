@@ -46,6 +46,22 @@ const App: React.FC = () => {
     load();
   }, []);
 
+  // Handle camera stream assignment after component mount
+  useEffect(() => {
+    if (isCameraActive && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [isCameraActive, stream]);
+
+  // Cleanup camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
   // Filter derivations
   const booths = useMemo(() => Array.from(new Set(allMembers.map(m => m.boothNo))).sort((a, b) => Number(a) - Number(b)), [allMembers]);
   
@@ -107,18 +123,23 @@ const App: React.FC = () => {
   };
 
   const startCamera = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("आपका ब्राउज़र कैमरा एक्सेस का समर्थन नहीं करता है।");
+      return;
+    }
     try {
       const s = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
       });
       setStream(s);
-      if (videoRef.current) {
-        videoRef.current.srcObject = s;
-      }
       setIsCameraActive(true);
     } catch (err) {
-      console.error("Camera error:", err);
-      alert("कैमरा एक्सेस करने में विफल");
+      console.error("Camera access error:", err);
+      alert("कैमरा एक्सेस करने में विफल। कृपया अनुमतियों की जांच करें।");
     }
   };
 
@@ -135,7 +156,6 @@ const App: React.FC = () => {
       const canvas = document.createElement('canvas');
       const video = videoRef.current;
       
-      // Resize logic to stay under Google Sheets cell limit (50,000 chars)
       const MAX_WIDTH = 640;
       let width = video.videoWidth;
       let height = video.videoHeight;
@@ -150,7 +170,6 @@ const App: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(video, 0, 0, width, height);
-        // Use lower quality to ensure small base64 string
         const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
         handleEditChange('aadhaarImage', dataUrl);
         stopCamera();
@@ -396,7 +415,13 @@ const App: React.FC = () => {
                   {isCameraActive ? (
                     <div className="space-y-4 animate-in fade-in zoom-in">
                       <div className="relative aspect-video bg-black rounded-2xl overflow-hidden ring-4 ring-blue-500/20">
-                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                        <video 
+                          ref={videoRef} 
+                          autoPlay 
+                          playsInline 
+                          muted
+                          className="w-full h-full object-cover" 
+                        />
                         <div className="absolute inset-0 border-[30px] border-black/30 pointer-events-none"></div>
                         <div className="absolute inset-[30px] border-2 border-white/50 border-dashed pointer-events-none rounded-lg"></div>
                       </div>
