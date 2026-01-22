@@ -3,10 +3,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Member, DeleteReason } from './types';
 import { fetchData, saveMember, deleteMember } from './services/gasService';
 import { DELETE_REASONS, TARGET_DATE, GENDER_OPTIONS } from './constants';
+import { GoogleGenAI, Type } from "@google/genai";
 
 const App: React.FC = () => {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'svn'>('selection');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -111,6 +113,63 @@ const App: React.FC = () => {
     return age.toString();
   };
 
+  const performOcr = async (base64Data: string) => {
+    setOcrLoading(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const base64Content = base64Data.split(',')[1];
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: base64Content,
+                },
+              },
+              {
+                text: "Extract the 12-digit Aadhaar number and the date of birth (DOB) from this Aadhaar card image. Return ONLY a JSON object with keys 'aadhaar' and 'dob'. Format 'dob' as 'YYYY-MM-DD'. If a field is not found, leave it empty.",
+              },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              aadhaar: { type: Type.STRING },
+              dob: { type: Type.STRING },
+            },
+            required: ["aadhaar", "dob"],
+          },
+        },
+      });
+
+      const result = JSON.parse(response.text || "{}");
+      
+      if (result.aadhaar || result.dob) {
+        setEditingMember(prev => {
+          if (!prev) return null;
+          const updated = { ...prev };
+          if (result.aadhaar) updated.aadhaar = result.aadhaar.replace(/\s/g, '');
+          if (result.dob) {
+            updated.dob = result.dob;
+            updated.calculatedAge = calculateAgeAtTarget(result.dob);
+          }
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error("OCR Extraction failed:", error);
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
   const handleEditChange = (field: keyof Member, value: string) => {
     setEditingMember(prev => {
       if (!prev) return null;
@@ -156,7 +215,6 @@ const App: React.FC = () => {
       const canvas = document.createElement('canvas');
       const video = videoRef.current;
       
-      // Target smaller size for Google Sheets compatibility (Cell limit 50,000 chars)
       const MAX_WIDTH = 480; 
       let width = video.videoWidth;
       let height = video.videoHeight;
@@ -171,16 +229,13 @@ const App: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(video, 0, 0, width, height);
-        // Compressed JPEG at 0.4 quality to significantly reduce string length
         const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
-        console.log(`Captured Image Length: ${dataUrl.length} characters`);
-        
-        if (dataUrl.length > 49000) {
-          alert("चेतावनी: फोटो का आकार बड़ा है, यह सुरक्षित नहीं हो सकता। कृपया दोबारा खींचें।");
-        }
         
         handleEditChange('aadhaarImage', dataUrl);
         stopCamera();
+        
+        // Trigger OCR extraction
+        performOcr(dataUrl);
       }
     }
   };
@@ -311,14 +366,16 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {loading && (
+      {(loading || ocrLoading) && (
         <div className="fixed inset-0 bg-white/60 flex items-center justify-center z-[200] backdrop-blur-md">
           <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 animate-in zoom-in duration-300">
             <div className="relative">
               <div className="h-20 w-20 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin"></div>
-              <i className="fa-solid fa-cloud-arrow-down absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-600 text-2xl"></i>
+              <i className={`fa-solid ${ocrLoading ? 'fa-bolt' : 'fa-cloud-arrow-down'} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-600 text-2xl`}></i>
             </div>
-            <span className="font-black text-xl text-gray-800 tracking-tight">डाटा लोड हो रहा है...</span>
+            <span className="font-black text-xl text-gray-800 tracking-tight">
+              {ocrLoading ? 'विवरण निकाला जा रहा है...' : 'डाटा लोड हो रहा है...'}
+            </span>
           </div>
         </div>
       )}
