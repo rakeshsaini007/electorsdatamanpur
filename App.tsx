@@ -5,6 +5,12 @@ import { fetchData, saveMember, deleteMember } from './services/gasService';
 import { DELETE_REASONS, TARGET_DATE, GENDER_OPTIONS } from './constants';
 import { GoogleGenAI, Type } from "@google/genai";
 
+declare var process: {
+  env: {
+    API_KEY: string;
+  };
+};
+
 const App: React.FC = () => {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +124,7 @@ const App: React.FC = () => {
     if (!base64Data) return;
     setOcrLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const base64Content = base64Data.split(',')[1];
       
       const response = await ai.models.generateContent({
