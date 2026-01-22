@@ -30,6 +30,7 @@ const App: React.FC = () => {
 
   const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
@@ -114,6 +115,7 @@ const App: React.FC = () => {
   };
 
   const performOcr = async (base64Data: string) => {
+    if (!base64Data) return;
     setOcrLoading(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -165,6 +167,7 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error("OCR Extraction failed:", error);
+      alert("AI विवरण निकालने में विफल रहा। कृपया मैन्युअल रूप से जांचें।");
     } finally {
       setOcrLoading(false);
     }
@@ -233,10 +236,19 @@ const App: React.FC = () => {
         
         handleEditChange('aadhaarImage', dataUrl);
         stopCamera();
-        
-        // Trigger OCR extraction
-        performOcr(dataUrl);
       }
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        handleEditChange('aadhaarImage', base64);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -374,7 +386,7 @@ const App: React.FC = () => {
               <i className={`fa-solid ${ocrLoading ? 'fa-bolt' : 'fa-cloud-arrow-down'} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-600 text-2xl`}></i>
             </div>
             <span className="font-black text-xl text-gray-800 tracking-tight">
-              {ocrLoading ? 'विवरण निकाला जा रहा है...' : 'डाटा लोड हो रहा है...'}
+              {ocrLoading ? 'AI विवरण निकाल रहा है...' : 'डाटा लोड हो रहा है...'}
             </span>
           </div>
         </div>
@@ -478,16 +490,27 @@ const App: React.FC = () => {
                 <div className="bg-blue-50 p-4 rounded-3xl border-2 border-dashed border-blue-200">
                   <div className="flex justify-between items-center mb-4">
                     <label className="text-xs font-black text-blue-700 uppercase tracking-widest">आधार कार्ड फोटो</label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       {editingMember.aadhaarImage && (
-                        <button onClick={() => setEnlargedImage(editingMember.aadhaarImage!)} className="text-[10px] font-black text-blue-600 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-blue-100">देखें</button>
+                        <>
+                          <button onClick={() => setEnlargedImage(editingMember.aadhaarImage!)} className="text-[10px] font-black text-blue-600 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-blue-100 flex items-center gap-1">
+                            <i className="fa-solid fa-eye"></i> देखें
+                          </button>
+                          <button 
+                            onClick={() => performOcr(editingMember.aadhaarImage!)} 
+                            disabled={ocrLoading}
+                            className="text-[10px] font-black text-white bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-xl shadow-md border border-purple-700 flex items-center gap-1.5 disabled:opacity-50 transition-all active:scale-95"
+                          >
+                            <i className="fa-solid fa-wand-magic-sparkles"></i> AI
+                          </button>
+                        </>
                       )}
                       {isPhotoChanged && (
                         <button 
                           onClick={() => handleSave(editingMember)} 
                           className="text-[10px] font-black text-white bg-blue-600 px-3 py-1.5 rounded-xl shadow-md border border-blue-700 flex items-center gap-1.5"
                         >
-                          <i className="fa-solid fa-cloud-arrow-up"></i> फोटो सुरक्षित करें
+                          <i className="fa-solid fa-cloud-arrow-up"></i> सुरक्षित
                         </button>
                       )}
                     </div>
@@ -514,7 +537,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <div className="w-24 h-24 bg-white rounded-2xl border-2 border-gray-100 shadow-inner flex items-center justify-center overflow-hidden shrink-0 group relative" onClick={() => editingMember.aadhaarImage && setEnlargedImage(editingMember.aadhaarImage)}>
                         {editingMember.aadhaarImage ? (
                           <img src={editingMember.aadhaarImage} alt="Capture" className="w-full h-full object-cover" />
@@ -530,10 +553,23 @@ const App: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      <button onClick={startCamera} className="flex-1 bg-white hover:bg-gray-50 text-blue-700 border-2 border-blue-100 font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-3 transition-all">
-                        <i className="fa-solid fa-camera-retro text-xl"></i>
-                        {editingMember.aadhaarImage ? 'फोटो बदलें' : 'कैमरा शुरू करें'}
-                      </button>
+                      <div className="flex-1 flex flex-col gap-2">
+                        <button onClick={startCamera} className="w-full bg-white hover:bg-gray-50 text-blue-700 border-2 border-blue-100 font-black py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm">
+                          <i className="fa-solid fa-camera text-lg"></i>
+                          {editingMember.aadhaarImage ? 'कैमरा बदलें' : 'कैमरा'}
+                        </button>
+                        <button onClick={() => fileInputRef.current?.click()} className="w-full bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 font-black py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm">
+                          <i className="fa-solid fa-upload text-lg"></i>
+                          अपलोड
+                        </button>
+                        <input 
+                          type="file" 
+                          ref={fileInputRef} 
+                          className="hidden" 
+                          accept="image/*" 
+                          onChange={handleFileUpload}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
