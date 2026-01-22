@@ -131,8 +131,8 @@ const App: React.FC = () => {
       const s = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 640 },
+          height: { ideal: 480 }
         } 
       });
       setStream(s);
@@ -156,7 +156,8 @@ const App: React.FC = () => {
       const canvas = document.createElement('canvas');
       const video = videoRef.current;
       
-      const MAX_WIDTH = 640;
+      // Target smaller size for Google Sheets compatibility (Cell limit 50,000 chars)
+      const MAX_WIDTH = 480; 
       let width = video.videoWidth;
       let height = video.videoHeight;
       
@@ -170,7 +171,14 @@ const App: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(video, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        // Compressed JPEG at 0.4 quality to significantly reduce string length
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
+        console.log(`Captured Image Length: ${dataUrl.length} characters`);
+        
+        if (dataUrl.length > 49000) {
+          alert("चेतावनी: फोटो का आकार बड़ा है, यह सुरक्षित नहीं हो सकता। कृपया दोबारा खींचें।");
+        }
+        
         handleEditChange('aadhaarImage', dataUrl);
         stopCamera();
       }
@@ -178,6 +186,11 @@ const App: React.FC = () => {
   };
 
   const handleSave = async (member: Member) => {
+    if (member.aadhaarImage && member.aadhaarImage.length > 50000) {
+      alert("फोटो का आकार बहुत बड़ा है (50KB से अधिक)। कृपया कम रोशनी या छोटे बैकग्राउंड में फोटो लें।");
+      return;
+    }
+
     if (member.aadhaar) {
       const duplicate = allMembers.find(m => m.aadhaar === member.aadhaar && m.svn !== member.svn);
       if (duplicate) {
@@ -192,7 +205,6 @@ const App: React.FC = () => {
       alert('डाटा सफलतापूर्वक सुरक्षित किया गया!');
       const refreshRes = await fetchData();
       if (refreshRes.data) setAllMembers(refreshRes.data);
-      // Update local editing state to sync with saved data
       setEditingMember(prev => prev ? {...member} : null);
     } else {
       alert(res.error || 'डाटा सुरक्षित करने में त्रुटि');
@@ -238,7 +250,6 @@ const App: React.FC = () => {
         <p className="text-gray-500 font-medium">निर्वाचक नामावली विवरण खोजें एवं अद्यतन करें</p>
       </header>
 
-      {/* Mode Selector */}
       <div className="flex justify-center mb-10">
         <div className="bg-gray-200/50 backdrop-blur-sm p-1.5 rounded-2xl inline-flex shadow-inner border border-gray-200">
           <button 
@@ -262,7 +273,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Controls */}
       <div className="bg-white p-8 rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 mb-10 transition-all duration-300">
         {searchMode === 'selection' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 animate-in fade-in slide-in-from-top-4">
@@ -314,7 +324,6 @@ const App: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Member List - Card Layout */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
           <div className="flex justify-between items-center px-2">
             <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
@@ -387,7 +396,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Editor Form */}
         <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-8">
           {editingMember ? (
             <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-right-8 duration-500 ring-1 ring-black/5">
@@ -410,7 +418,6 @@ const App: React.FC = () => {
               </div>
               
               <div className="p-7 space-y-6">
-                {/* Aadhaar Photo Capture UI */}
                 <div className="bg-blue-50 p-4 rounded-3xl border-2 border-dashed border-blue-200">
                   <div className="flex justify-between items-center mb-4">
                     <label className="text-xs font-black text-blue-700 uppercase tracking-widest">आधार कार्ड फोटो</label>
@@ -574,7 +581,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Enlarged Image Modal */}
       {enlargedImage && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[500] p-4 backdrop-blur-sm" onClick={() => setEnlargedImage(null)}>
           <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
@@ -584,7 +590,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Aadhaar Warning Modal */}
       {aadhaarWarning.show && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[300] p-4 backdrop-blur-md">
           <div className="bg-white rounded-[2.5rem] max-w-md w-full p-10 shadow-2xl border-t-[14px] border-amber-500 animate-in zoom-in duration-300">
@@ -607,7 +612,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {showDeleteModal.show && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[300] p-4 backdrop-blur-md">
           <div className="bg-white rounded-[2.5rem] max-w-md w-full p-10 shadow-2xl border-t-[14px] border-rose-600 animate-in zoom-in duration-300">
