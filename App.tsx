@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Member, DeleteReason } from './types';
 import { fetchData, saveMember, deleteMember } from './services/gasService';
-import { DELETE_REASONS, TARGET_DATE, GENDER_OPTIONS } from './constants';
+import { DELETE_REASONS, TARGET_DATE, GENDER_OPTIONS, GOOGLE_SHEET_URL } from './constants';
 import { GoogleGenAI, Type } from "@google/genai";
 
 declare var process: {
@@ -313,12 +313,37 @@ const App: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      <header className="mb-10 text-center">
+      <header className="mb-10 text-center relative">
+        <div className="absolute top-0 right-0 hidden sm:block">
+          <a 
+            href={GOOGLE_SHEET_URL} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-black px-4 py-2.5 rounded-2xl border border-emerald-100 transition-all shadow-sm hover:shadow-md"
+          >
+            <i className="fa-solid fa-table-list text-lg"></i>
+            <span>डाटा शीट देखें</span>
+            <i className="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-50"></i>
+          </a>
+        </div>
+        
         <div className="inline-block bg-blue-100 p-3 rounded-2xl mb-4">
           <i className="fa-solid fa-users-viewfinder text-3xl text-blue-700"></i>
         </div>
         <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">मतदाता प्रबंधन पोर्टल</h1>
         <p className="text-gray-500 font-medium">निर्वाचक नामावली विवरण खोजें एवं अद्यतन करें</p>
+        
+        <div className="sm:hidden mt-4">
+          <a 
+            href={GOOGLE_SHEET_URL} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 font-black px-4 py-2 rounded-xl border border-emerald-100 text-sm"
+          >
+            <i className="fa-solid fa-table-list"></i>
+            <span>डाटा शीट देखें</span>
+          </a>
+        </div>
       </header>
 
       <div className="flex justify-center mb-10">
