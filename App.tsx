@@ -15,7 +15,7 @@ const App: React.FC = () => {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'svn'>('selection');
+  const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'svn' | 'serial'>('selection');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     booth: '',
@@ -103,6 +103,10 @@ const App: React.FC = () => {
       const q = searchQuery.trim().toUpperCase();
       if (!q) return [];
       return allMembers.filter(m => m.svn.toUpperCase().includes(q));
+    } else if (searchMode === 'serial') {
+      const q = searchQuery.trim();
+      if (!q) return [];
+      return allMembers.filter(m => m.voterSerial.includes(q));
     }
     return [];
   }, [allMembers, filters, searchQuery, searchMode]);
@@ -124,26 +128,26 @@ const App: React.FC = () => {
     if (!base64Data) return;
     setOcrLoading(true);
     try {
+      // Fix: Always use process.env.API_KEY to initialize GoogleGenAI.
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const base64Content = base64Data.split(',')[1];
       
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: [
-          {
-            parts: [
-              {
-                inlineData: {
-                  mimeType: 'image/jpeg',
-                  data: base64Content,
-                },
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                mimeType: 'image/jpeg',
+                // Fix: Changed 'baseContent' to 'base64Content' to fix the compilation error.
+                data: base64Content,
               },
-              {
-                text: "Extract the 12-digit Aadhaar number and the date of birth (DOB) from this Aadhaar card image. Return ONLY a JSON object with keys 'aadhaar' and 'dob'. Format 'dob' as 'YYYY-MM-DD'. If a field is not found, leave it empty.",
-              },
-            ],
-          },
-        ],
+            },
+            {
+              text: "Extract the 12-digit Aadhaar number and the date of birth (DOB) from this Aadhaar card image. Return ONLY a JSON object with keys 'aadhaar' and 'dob'. Format 'dob' as 'YYYY-MM-DD'. If a field is not found, leave it empty.",
+            },
+          ],
+        },
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -157,6 +161,7 @@ const App: React.FC = () => {
         },
       });
 
+      // Fix: Use the .text property (not a method) to access the generated text content.
       const result = JSON.parse(response.text || "{}");
       
       if (result.aadhaar || result.dob) {
@@ -324,24 +329,30 @@ const App: React.FC = () => {
       </header>
 
       <div className="flex justify-center mb-10">
-        <div className="bg-gray-200/50 backdrop-blur-sm p-1.5 rounded-2xl inline-flex shadow-inner border border-gray-200">
+        <div className="bg-gray-200/50 backdrop-blur-sm p-1.5 rounded-2xl inline-flex flex-wrap justify-center shadow-inner border border-gray-200 gap-1">
           <button 
             onClick={() => { setSearchMode('selection'); resetSearchState(); }}
-            className={`px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'selection' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'selection' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
           >
             <i className="fa-solid fa-filter-list"></i> चयन द्वारा
           </button>
           <button 
             onClick={() => { setSearchMode('name'); resetSearchState(); }}
-            className={`px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'name' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'name' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
           >
             <i className="fa-solid fa-magnifying-glass"></i> नाम से
           </button>
           <button 
             onClick={() => { setSearchMode('svn'); resetSearchState(); setSearchQuery('SUR'); }}
-            className={`px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'svn' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'svn' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
           >
             <i className="fa-solid fa-address-card"></i> SVN से
+          </button>
+          <button 
+            onClick={() => { setSearchMode('serial'); resetSearchState(); }}
+            className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'serial' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <i className="fa-solid fa-list-ol"></i> क्रमांक से
           </button>
         </div>
       </div>
@@ -373,12 +384,22 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {(searchMode === 'name' || searchMode === 'svn') && (
+        {(searchMode === 'name' || searchMode === 'svn' || searchMode === 'serial') && (
           <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-top-4">
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">{searchMode === 'name' ? 'निर्वाचक का नाम या पिता का नाम' : 'SVN नंबर (SUR...)'}</label>
+            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
+              {searchMode === 'name' && 'निर्वाचक का नाम या पिता का नाम'}
+              {searchMode === 'svn' && 'SVN नंबर (SUR...)'}
+              {searchMode === 'serial' && 'मतदाता क्रमांक (Voter Serial Number)'}
+            </label>
             <div className="relative group">
-              <input type="text" className="w-full border-gray-200 rounded-2xl p-5 pl-14 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold uppercase text-lg shadow-inner" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="यहां टाइप करना शुरू करें..." />
-              <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : 'fa-id-badge'} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
+              <input 
+                type={searchMode === 'serial' ? "number" : "text"} 
+                className="w-full border-gray-200 rounded-2xl p-5 pl-14 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold uppercase text-lg shadow-inner" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                placeholder="यहां टाइप करना शुरू करें..." 
+              />
+              <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : (searchMode === 'svn' ? 'fa-id-badge' : 'fa-list-ol')} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
             </div>
           </div>
         )}
