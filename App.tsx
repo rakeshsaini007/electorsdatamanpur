@@ -15,7 +15,7 @@ const App: React.FC = () => {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'aadhaar'>('selection');
+  const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'aadhaar' | 'aadhaar4'>('selection');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     booth: '',
@@ -103,6 +103,10 @@ const App: React.FC = () => {
       const q = searchQuery.trim();
       if (!q) return [];
       return allMembers.filter(m => m.aadhaar.includes(q));
+    } else if (searchMode === 'aadhaar4') {
+      const q = searchQuery.trim();
+      if (!q) return [];
+      return allMembers.filter(m => m.aadhaar.endsWith(q));
     }
     return [];
   }, [allMembers, filters, searchQuery, searchMode]);
@@ -341,6 +345,12 @@ const App: React.FC = () => {
           >
             <i className="fa-solid fa-fingerprint"></i> आधार से
           </button>
+          <button 
+            onClick={() => { setSearchMode('aadhaar4'); resetSearchState(); }}
+            className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'aadhaar4' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <i className="fa-solid fa-hashtag"></i> आधार (4)
+          </button>
         </div>
       </div>
 
@@ -371,20 +381,22 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {(searchMode === 'name' || searchMode === 'aadhaar') && (
+        {(searchMode === 'name' || searchMode === 'aadhaar' || searchMode === 'aadhaar4') && (
           <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-top-4">
             <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
-              {searchMode === 'name' ? 'निर्वाचक का नाम या पिता का नाम' : '12-अंकों का आधार नंबर'}
+              {searchMode === 'name' && 'निर्वाचक का नाम या पिता का नाम'}
+              {searchMode === 'aadhaar' && '12-अंकों का आधार नंबर'}
+              {searchMode === 'aadhaar4' && 'आधार के अंतिम 4 अंक'}
             </label>
             <div className="relative group">
               <input 
-                type={searchMode === 'aadhaar' ? "number" : "text"} 
+                type={(searchMode === 'aadhaar' || searchMode === 'aadhaar4') ? "number" : "text"} 
                 className="w-full border-gray-200 rounded-2xl p-5 pl-14 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold uppercase text-lg shadow-inner" 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
                 placeholder="यहां टाइप करना शुरू करें..." 
               />
-              <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : 'fa-fingerprint'} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
+              <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : (searchMode === 'aadhaar' ? 'fa-fingerprint' : 'fa-hashtag')} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
             </div>
           </div>
         )}
