@@ -15,7 +15,7 @@ const App: React.FC = () => {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'svn'>('selection');
+  const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'aadhaar'>('selection');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     booth: '',
@@ -99,10 +99,10 @@ const App: React.FC = () => {
         m.voterName.toLowerCase().includes(q) || 
         m.relativeName.toLowerCase().includes(q)
       );
-    } else if (searchMode === 'svn') {
-      const q = searchQuery.trim().toUpperCase();
+    } else if (searchMode === 'aadhaar') {
+      const q = searchQuery.trim();
       if (!q) return [];
-      return allMembers.filter(m => m.svn.toUpperCase().includes(q));
+      return allMembers.filter(m => m.aadhaar.includes(q));
     }
     return [];
   }, [allMembers, filters, searchQuery, searchMode]);
@@ -336,10 +336,10 @@ const App: React.FC = () => {
             <i className="fa-solid fa-magnifying-glass"></i> नाम से
           </button>
           <button 
-            onClick={() => { setSearchMode('svn'); resetSearchState(); setSearchQuery('SUR'); }}
-            className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'svn' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => { setSearchMode('aadhaar'); resetSearchState(); }}
+            className={`px-5 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${searchMode === 'aadhaar' ? 'bg-white text-blue-700 shadow-lg transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <i className="fa-solid fa-address-card"></i> SVN से
+            <i className="fa-solid fa-fingerprint"></i> आधार से
           </button>
         </div>
       </div>
@@ -371,20 +371,20 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {(searchMode === 'name' || searchMode === 'svn') && (
+        {(searchMode === 'name' || searchMode === 'aadhaar') && (
           <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-top-4">
             <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
-              {searchMode === 'name' ? 'निर्वाचक का नाम या पिता का नाम' : 'SVN नंबर (SUR...)'}
+              {searchMode === 'name' ? 'निर्वाचक का नाम या पिता का नाम' : '12-अंकों का आधार नंबर'}
             </label>
             <div className="relative group">
               <input 
-                type="text" 
+                type={searchMode === 'aadhaar' ? "number" : "text"} 
                 className="w-full border-gray-200 rounded-2xl p-5 pl-14 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold uppercase text-lg shadow-inner" 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
                 placeholder="यहां टाइप करना शुरू करें..." 
               />
-              <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : 'fa-id-badge'} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
+              <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : 'fa-fingerprint'} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
             </div>
           </div>
         )}
