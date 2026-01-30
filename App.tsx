@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import { Member, DeleteReason } from './types';
 import { fetchData, saveMember, deleteMember } from './services/gasService';
 import { DELETE_REASONS, TARGET_DATE, GENDER_OPTIONS, GOOGLE_SHEET_URL } from './constants';
@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [searchMode, setSearchMode] = useState<'selection' | 'name' | 'aadhaar'>('selection');
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [filters, setFilters] = useState({
     booth: '',
     ward: '',
@@ -93,19 +94,19 @@ const App: React.FC = () => {
         m.houseNo === filters.house
       );
     } else if (searchMode === 'name') {
-      const q = searchQuery.trim().toLowerCase();
+      const q = deferredSearchQuery.trim().toLowerCase();
       if (!q) return [];
       return allMembers.filter(m => 
         m.voterName.toLowerCase().includes(q) || 
         m.relativeName.toLowerCase().includes(q)
       );
     } else if (searchMode === 'aadhaar') {
-      const q = searchQuery.trim();
+      const q = deferredSearchQuery.trim();
       if (!q) return [];
       return allMembers.filter(m => m.aadhaar.includes(q));
     }
     return [];
-  }, [allMembers, filters, searchQuery, searchMode]);
+  }, [allMembers, filters, deferredSearchQuery, searchMode]);
 
   const calculateAgeAtTarget = (dobString: string): string => {
     if (!dobString) return '';
@@ -404,12 +405,26 @@ const App: React.FC = () => {
             <div className="relative group">
               <input 
                 type={searchMode === 'aadhaar' ? "number" : "text"} 
-                className="w-full border-gray-200 rounded-2xl p-5 pl-14 bg-gray-50 border-2 focus:border-blue-500 focus:ring-0 transition-all font-bold uppercase text-lg shadow-inner" 
+                className="w-full border-gray-200 rounded-2xl p-5 pl-14 pr-14 bg-gray-50 border-2 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-bold uppercase text-lg shadow-inner outline-none" 
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)} 
                 placeholder="यहां टाइप करना शुरू करें..." 
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+                autoCapitalize="none"
               />
               <i className={`fa-solid ${searchMode === 'name' ? 'fa-user-tag' : 'fa-fingerprint'} absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-blue-500 transition-colors`}></i>
+              
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 bg-gray-200 hover:bg-gray-300 text-gray-500 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+                  aria-label="खोज साफ़ करें"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              )}
             </div>
           </div>
         )}
