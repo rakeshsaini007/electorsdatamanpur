@@ -5,7 +5,7 @@ import { DeleteReason } from './types';
 export const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby6O5KZzBwsfIf5FMshP56uJIoghmeGCA2phymCTusE-OrOH-aFdvHk21-vrzeTRs2H/exec';
 
 // URL for the source Google Sheet
-export const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1vP4G_lJ3yv0N_l6XU9fF2H_M3m-0X-T0G-L0X-T0G-L0/edit';
+export const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/10puDIrOzCIGdz21TZoyqGOqSXnl8MOc5cVyWLb2x_cg/edit';
 
 export const DELETE_REASONS: DeleteReason[] = ['शादी', 'मृत्यु', 'डुप्लीकेट', 'पलायन'];
 
