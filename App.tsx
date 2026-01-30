@@ -465,6 +465,12 @@ const App: React.FC = () => {
                       <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">{member.svn}</span>
                     </div>
                     <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <i className="fa-solid fa-fingerprint text-[10px] text-gray-400"></i>
+                      <span className={`text-[10px] font-black uppercase tracking-tighter ${member.aadhaar ? 'text-emerald-600' : 'text-gray-400'}`}>
+                        {member.aadhaar || 'आधार नदारद'}
+                      </span>
+                    </div>
+                    <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
                       <i className="fa-solid fa-location-dot text-[10px] text-gray-400"></i>
                       <span className="text-[10px] font-black text-gray-600 uppercase tracking-tighter">
                         {member.boothNo}/{member.wardNo}/{member.houseNo}
